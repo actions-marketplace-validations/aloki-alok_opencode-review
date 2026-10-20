@@ -14,10 +14,11 @@ CODE_SPECS = [f':(glob)**/*.{ext}' for ext in CODE]
 SKIP_SPECS = [f':(exclude,glob)**/{name}' for name in GENERATED]
 
 
-def build(repo, base, head):
-    """Whole changed functions for code, plain hunks for the rest. `base...head` diffs from the
-    merge base, so commits that landed on the base branch after the PR branched are not shown."""
-    rng = f'{base}...{head}'
+def build(repo, merge_base, head):
+    """Whole changed functions for code, plain hunks for the rest. The caller passes the merge base,
+    so commits that landed on the base branch after the PR branched are not shown. Two trees are
+    all it needs: it works on a depth-1 fetch."""
+    rng = f'{merge_base}..{head}'
     code = _git(repo, 'diff', '--function-context', rng, '--', *CODE_SPECS, *SKIP_SPECS)
     rest = _git(repo, 'diff', rng, '--', '.', *[f':(exclude,glob)**/*.{e}' for e in CODE], *SKIP_SPECS)
     numstat = _git(repo, 'diff', '--numstat', rng, '--', *CODE_SPECS, *SKIP_SPECS)

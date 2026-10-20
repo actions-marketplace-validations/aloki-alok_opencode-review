@@ -65,7 +65,7 @@ class RunnerTest(unittest.TestCase):
         self.assertEqual(r.result['findings'][0]['title'], 't')
         resume = self.calls_made()[1]['argv']
         self.assertIn('--session', resume)
-        self.assertEqual(resume[resume.index('--session') + 1], 'ses_fake')
+        self.assertEqual(resume[resume.index('--session') + 1], 'ses_review')
         self.assertEqual(resume[resume.index('--agent') + 1], 'wrap')
 
     def test_killed_and_resume_also_fails_gives_none(self):

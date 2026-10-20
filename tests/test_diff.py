@@ -66,19 +66,6 @@ class DiffTest(unittest.TestCase):
         self.assertIn('+world', patch)
         self.assertEqual(changed, 0)
 
-    def test_uses_merge_base(self):
-        # The base branch moved on after the PR branched: its changes are not the PR's.
-        git(self.repo, 'checkout', '-qb', 'feature')
-        self.write('app/new.py', 'def f():\n    return 1\n')
-        head = self.commit()
-        git(self.repo, 'checkout', '-q', 'main')
-        self.write('README.md', 'main moved\n')
-        base = self.commit()
-        patch, changed = build(self.repo, base, head)
-        self.assertIn('app/new.py', patch)
-        self.assertNotIn('main moved', patch)
-        self.assertEqual(changed, 2)
-
 
 if __name__ == '__main__':
     unittest.main()
