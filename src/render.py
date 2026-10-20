@@ -38,10 +38,10 @@ def render(o):
     lines = [MARKER]
     if o.findings is None:
         if o.find == 'failed':
-            lines.append(f'Review failed for {sha}: {o.reason or "the model gave no answer"}. (╥﹏╥)')
+            lines.append(f'Review failed for {sha}: {o.reason or "the model gave no answer"}. :(')
         else:
             lines.append(
-                f'Review did not finish for {sha}. (-_-;) It runs again on the next push, or comment `/oc review`.'
+                f'Review did not finish for {sha}. -_- It runs again on the next push, or comment `/oc review`.'
             )
         return '\n'.join(lines)
 
@@ -54,15 +54,15 @@ def render(o):
 
     if kept:
         n = len(kept)
-        lines += [f'Changes needed: {n} thing{"s" if n > 1 else ""}. (・_・)ノ', '']
+        lines += [f'Changes needed: {n} thing{"s" if n > 1 else ""}. :/', '']
         for i, f in enumerate(kept, 1):
             where = ':'.join(str(x) for x in (f.get('file'), f.get('line')) if x) or '?'
             fix = _clip(f.get('fix'))
             lines.append(f'{i}. {_clip(f.get("title")).rstrip(".")} (`{where}`).{" " + fix if fix else ""}')
     elif o.find == 'done':
-        lines.append('Nothing blocking found. (•‿•)')
+        lines.append('Nothing blocking found. :)')
     else:
-        lines.append(f'No findings before the {LIMITS.get(o.find, "time")} limit. (・・;)')
+        lines.append(f'No findings before the {LIMITS.get(o.find, "time")} limit. o_o')
         notes = [n for n in notes if 'may have missed' not in n] + ['Comment `/oc review` to run it again.']
     lines += [
         '',

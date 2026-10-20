@@ -1,4 +1,4 @@
-# OpenCode review (•‿•)
+# OpenCode review :)
 
 AI code review for your pull requests, and answers to `/oc` questions, run by
 [OpenCode](https://opencode.ai) inside your own GitHub Actions with your own model key.
@@ -58,7 +58,7 @@ jobs:
           api-key: ${{ secrets.OPENROUTER_API_KEY }}
 ```
 
-That's it. Open a PR and a review appears in a few minutes. ヽ(•‿•)ノ
+That's it. Open a PR and a review appears in a few minutes. :D
 
 The same file lives in [`templates/workflow.yml`](templates/workflow.yml) with a comment on every
 line. For the strongest supply-chain safety, pin `@v0` to a full commit SHA and let Dependabot
@@ -75,11 +75,11 @@ from the base branch, so a PR can't rewrite the rules for its own review.
 
 | Comment | Means |
 |---|---|
-| `Changes needed: 2 things. (・_・)ノ` | Defects found and double-checked. Each one names the file, the line and a fix. |
-| `Nothing blocking found. (•‿•)` | The review finished and found nothing worth blocking on. |
+| `Changes needed: 2 things. :/` | Defects found and double-checked. Each one names the file, the line and a fix. |
+| `Nothing blocking found. :)` | The review finished and found nothing worth blocking on. |
 | `... Stopped at the time limit, so it may have missed things.` | It ran out of time but kept what it found. |
-| `Review did not finish ... (-_-;)` | It ran out of time with nothing to show. Comment `/oc review` to retry. |
-| `Review failed for ...: <reason>. (╥﹏╥)` | Something is set up wrong, for example a dead API key. The reason says what. |
+| `Review did not finish ... -_-` | It ran out of time with nothing to show. Comment `/oc review` to retry. |
+| `Review failed for ...: <reason>. :(` | Something is set up wrong, for example a dead API key. The reason says what. |
 
 At most 5 findings, under 150 words, no praise and no style nits. It never says "Nothing blocking"
 for a run that failed.
@@ -165,4 +165,4 @@ Details in [SECURITY.md](SECURITY.md).
 
 ## License
 
-MIT (^_^)b
+MIT ;)
