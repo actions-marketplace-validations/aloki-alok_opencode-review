@@ -30,7 +30,24 @@ def find_json(log, key):
     for t in _texts(log):
         # A model sometimes prints the JSON with its quotes escaped: {\"findings\": []}.
         found = _last_json(t, key) or _last_json(t.replace('\\"', '"'), key) or found
-    return found
+    return found or _running_lines(log, key)
+
+
+# Written one at a time as the model goes, so a run killed before its final JSON keeps them.
+RUNNING = {'findings': 'FINDING', 'verdicts': 'VERDICT'}
+
+
+def _running_lines(log, key):
+    items = []
+    for t in _texts(log):
+        for m in re.finditer(r'^\s*%s\s+(\{.*\})\s*$' % RUNNING.get(key, '-'), t, re.M):
+            try:
+                obj = json.loads(m[1])
+            except ValueError:
+                continue
+            if isinstance(obj, dict):
+                items.append(obj)
+    return {key: items} if items else None
 
 
 def _last_json(text, key):

@@ -1,4 +1,4 @@
-name: OpenCode review
+name: OpenCode code review
 description: Read-only AI review of pull requests, and answers to /oc questions, run by OpenCode in your own Actions.
 author: Alok
 branding:

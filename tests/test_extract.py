@@ -52,6 +52,27 @@ class ExtractTest(unittest.TestCase):
         log = text('{\\"findings\\": [{\\"file\\": \\"a.py\\", \\"line\\": 3}]}')
         self.assertEqual(find_json(log, 'findings'), {'findings': [{'file': 'a.py', 'line': 3}]})
 
+    def test_running_lines_are_salvaged_without_the_final_json(self):
+        # Killed before the final JSON: the FINDING lines written along the way still count.
+        log = '\n'.join(
+            [
+                text('Checked a.py.\nFINDING {"file": "a.py", "line": 3, "title": "x"}'),
+                text('FINDING {"file": "b.py", "line": 9, "title": "y"}\nnow reading c.py'),
+            ]
+        )
+        self.assertEqual(
+            find_json(log, 'findings'),
+            {'findings': [{'file': 'a.py', 'line': 3, 'title': 'x'}, {'file': 'b.py', 'line': 9, 'title': 'y'}]},
+        )
+
+    def test_final_json_wins_over_running_lines(self):
+        log = '\n'.join([text('FINDING {"file": "a.py", "line": 3}'), text('{"findings": []}')])
+        self.assertEqual(find_json(log, 'findings'), {'findings': []})
+
+    def test_running_verdict_lines(self):
+        log = text('VERDICT {"index": 0, "verdict": "real"}')
+        self.assertEqual(find_json(log, 'verdicts'), {'verdicts': [{'index': 0, 'verdict': 'real'}]})
+
     def test_two_json_blocks_last_wins(self):
         log = '\n'.join([text('{"findings": [%s]}' % json.dumps(FINDING)), text('{"findings": []}')])
         self.assertEqual(find_json(log, 'findings'), {'findings': []})

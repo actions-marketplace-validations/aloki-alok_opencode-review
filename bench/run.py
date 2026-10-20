@@ -98,10 +98,11 @@ def main():
     ap.add_argument('--budget', default='auto')
     ap.add_argument('--verify-budget', default='auto')
     ap.add_argument('--turn-p90', type=float, default=18)
+    ap.add_argument('--wrap-seconds', type=int, default=60)
     ap.add_argument('--opencode', default='opencode')
     ap.add_argument('--only', default='')
     a = ap.parse_args()
-    model = review.Model(a.opencode, a.model, os.environ['OPENCODE_REVIEW_API_KEY'], a.turn_p90)
+    model = review.Model(a.opencode, a.model, os.environ['OPENCODE_REVIEW_API_KEY'], a.turn_p90, a.wrap_seconds)
     cases = [json.loads(ln) for ln in Path(a.cases).read_text().splitlines() if ln.strip()]
     if a.only:
         cases = [c for c in cases if c['id'] in a.only.split(',')]

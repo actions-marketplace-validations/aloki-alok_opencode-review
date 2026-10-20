@@ -19,6 +19,9 @@ Rules:
 - Do not report style, naming, missing tests, missing docs, performance without a measured cause, or "consider adding error handling".
 - If you are not confident it is a real defect, leave it out. Zero findings is a good answer.
 - At most 5 findings, most severe first. Keep each title and fix under 12 words.
+- The moment you confirm a defect, write it on a line of its own, then keep going:
+  `FINDING {"file": "path", "line": 123, "severity": "high", "title": "...", "fix": "...", "scenario": "...", "evidence": "..."}`
+  If you run out of time, those lines are your answer.
 
 Always finish with ONLY this JSON, nothing after it:
 {"findings": [{"file": "path", "line": 123, "severity": "high|medium|low", "title": "one line", "fix": "what to do instead, one line", "scenario": "input/state -> what happens -> what should happen", "evidence": "the code you read that proves it, with file:line"}]}
