@@ -267,13 +267,13 @@ def _ask(ctx, pr, merge_base, head, failure):
         budget = parse_budget(env.get('OC_ASK_BUDGET') or '16:240')
         r = review.one_pass(ctx['model'], code, ctx['work'], 'ask', review.prompt('ask.md', budget.turns), budget, None)
         log(f'ask pass: {r.status}, {r.turns} turns, {r.seconds} s')
-        answer = r.answer or 'I could not finish an answer in time. Try a narrower question.'
+        answer = r.answer or 'I could not finish an answer in time. (._.) Try a narrower question.'
     gh.reply(job.number, job.comment_id, job.comment_kind, _answer_body(log.mask(answer)))
     _summary(env, f'opencode-review: answered on #{job.number}, model {env["OC_MODEL"]}')
 
 
 def _answer_body(answer):
-    return f'{ANSWER_MARKER}\n{answer}\n\n<sub>OpenCode answer, read-only, advisory.</sub>'
+    return f'{ANSWER_MARKER}\n{answer}\n\n<sub>OpenCode answer, read-only, advisory. (•ᴗ•)</sub>'
 
 
 def _summary(env, text):

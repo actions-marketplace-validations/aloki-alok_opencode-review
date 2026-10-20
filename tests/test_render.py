@@ -28,7 +28,7 @@ class RenderTest(unittest.TestCase):
     def test_failed_never_says_nothing_blocking(self):
         body = out(find='failed', findings=None, reason='the model API key was rejected (HTTP 401)')
         self.assertNotIn('Nothing blocking', body)
-        self.assertIn('Review failed for 012345678: the model API key was rejected (HTTP 401).', body)
+        self.assertIn('Review failed for 012345678: the model API key was rejected (HTTP 401). (╥﹏╥)', body)
 
     def test_unfinished_never_says_nothing_blocking(self):
         body = out(find='timeout', findings=None)
@@ -52,7 +52,7 @@ class RenderTest(unittest.TestCase):
         self.assertIn('Bug number 0', body)
         self.assertNotIn('Bug number 1', body)
         self.assertNotIn('Bug number 2', body)
-        self.assertIn('Changes needed: 1 thing.', body)
+        self.assertIn('Changes needed: 1 thing. (・_・)ノ', body)
 
     def test_cut_off_verify_keeps_unjudged_findings(self):
         # Critic finding 6: verify judged 1 of 3. Findings it never reached stay.
@@ -83,7 +83,7 @@ class RenderTest(unittest.TestCase):
                 sha=SHA, find='done', findings=[f(i) for i in range(9)], verify='timeout', verdicts=None, max_findings=5
             )
         )
-        self.assertIn('Changes needed: 5 things.', body)
+        self.assertIn('Changes needed: 5 things. (・_・)ノ', body)
         self.assertIn('Bug number 4', body)
         self.assertNotIn('Bug number 5', body)
 
@@ -108,7 +108,7 @@ class RenderTest(unittest.TestCase):
             '\n'.join(
                 [
                     MARKER,
-                    'Changes needed: 1 thing.',
+                    'Changes needed: 1 thing. (・_・)ノ',
                     '',
                     '1. Bug number 1 (`src/m1.py:1`). Do thing 1.',
                     '',

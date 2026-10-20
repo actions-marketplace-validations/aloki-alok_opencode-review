@@ -33,8 +33,8 @@ jobs:
           persist-credentials: false
       - name: Lint workflows and the action
         run: |
-          # The template's placeholder pin would fail the pin check: lint it with a real-looking SHA.
-          sed 's/COMMIT_SHA/0123456789abcdef0123456789abcdef01234567/' templates/workflow.yml > /tmp/workflow.yml
+          # The template uses @v0 for an easy start; lint it as if pinned to a SHA.
+          sed 's/@v0 .*/@0123456789abcdef0123456789abcdef01234567/' templates/workflow.yml > /tmp/workflow.yml
           bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.7/scripts/download-actionlint.bash) 1.7.7
           ./actionlint .github/workflows/*.yml /tmp/workflow.yml
           pipx run zizmor==1.31.1 --offline action.yml .github/workflows /tmp/workflow.yml

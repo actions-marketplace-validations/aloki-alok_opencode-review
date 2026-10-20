@@ -34,7 +34,7 @@ jobs:
       pull-requests: write
       issues: write
     steps:
-      - uses: aloki-alok/opencode-review@COMMIT_SHA # vX.Y.Z
+      - uses: aloki-alok/opencode-review@v0 # or pin a full commit SHA
         with:
           model: openrouter/deepseek/deepseek-v4.1-flash
           api-key: ${{ secrets.OPENROUTER_API_KEY }}
