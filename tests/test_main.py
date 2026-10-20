@@ -171,6 +171,20 @@ class ActionTest(unittest.TestCase):
         self.assertEqual(self.calls_made(), [])
         self.assertNotIn('sk-or-v1-deaddeaddead', log.replace('::add-mask::sk-or-v1-deaddeaddead', ''))
 
+    def test_install_failure_fails_loudly(self):
+        # Row 14: a runner OpenCode can't be installed on gets a clear reason, not silence.
+        def broken(version, dest):
+            raise main.install.InstallError('no OpenCode build for Windows AMD64. Set the opencode-path input.')
+        real, main.install.install = main.install.install, broken
+        try:
+            self.run_action('pull_request', self.pr_event(), {'review': FOUND}, opencode='')
+        finally:
+            main.install.install = real
+        [c] = self.review_comments()
+        self.assertIn('Review failed', c['body'])
+        self.assertIn('opencode-path', c['body'])
+        self.assertEqual(self.calls_made(), [])
+
     def test_model_error_fails_loudly(self):
         plan = {'review': {'run': [[0, {'type': 'error', 'error': {'data': {'message': 'model not found'}}}]], 'exit': 1}}
         self.run_action('pull_request', self.pr_event(), plan)

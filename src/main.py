@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -17,11 +18,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))  # python -I does not a
 from budget import Budget, find_budget, parse_budget  # noqa: E402
 from diff import build  # noqa: E402
 from github import GitHub, key_status  # noqa: E402
+import install  # noqa: E402
 from render import MARKER, Outcome, render  # noqa: E402
 from route import Settings, route  # noqa: E402
 from runner import Pass, run_pass  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_OPENCODE = '1.19.3'  # the version the bench numbers were measured on
 ANSWER_MARKER = '<!-- opencode-review:answer -->'
 OPENROUTER_KEY_URL = 'https://openrouter.ai/api/v1/key'
 VERIFY_SECONDS = 120
@@ -94,8 +97,16 @@ def _main(env, log):
             _sanitize(code, None)
         (code / '.review').mkdir()
 
-        ctx = dict(env=env, log=log, gh=gh, job=job, code=code, work=work, key=key)
-        failure = _key_failure(env, log, key)
+        failure = ''
+        try:
+            opencode = env.get('OC_OPENCODE') or install.install(
+                env.get('OC_OPENCODE_VERSION') or DEFAULT_OPENCODE, Path(env['RUNNER_TEMP'], 'opencode-review-bin'))
+            log(f'opencode: {opencode} ({_version(opencode, work)})')
+        except install.InstallError as e:
+            failure = f'could not install OpenCode ({e})'
+            log(failure)
+        failure = failure or _key_failure(env, log, key)
+        ctx = dict(env=env, log=log, gh=gh, job=job, code=code, work=work, key=key, opencode=opencode if not failure else '')
         if job.mode == 'review':
             _review(ctx, pr, head, base, merge_base, failure)
         else:
@@ -142,6 +153,17 @@ def _sanitize(code, base):
                 p.unlink(missing_ok=True)  # not in the base: the PR added it
 
 
+def _version(opencode, work):
+    home = work / 'version-home'  # OpenCode writes to ~/.config even for --version
+    home.mkdir(exist_ok=True)
+    try:
+        r = subprocess.run([opencode, '--version'], capture_output=True, text=True, timeout=30,
+                           env={'PATH': os.environ.get('PATH', ''), 'HOME': str(home)})
+        return r.stdout.strip() or 'version unknown'
+    except (OSError, subprocess.TimeoutExpired):
+        return 'version unknown'
+
+
 def _key_failure(env, log, key):
     """A reason string if the provider rejects the key, else ''. Only OpenRouter has a key endpoint."""
     if not env['OC_MODEL'].startswith('openrouter/'):
@@ -158,7 +180,7 @@ def _prompt(name, turns, guide=''):
 
 def _pass(ctx, agent, prompt, budget, json_key):
     env = ctx['env']
-    return run_pass(Pass(opencode=env.get('OC_OPENCODE') or 'opencode', cwd=str(ctx['code']),
+    return run_pass(Pass(opencode=ctx['opencode'], cwd=str(ctx['code']),
                          work=str(ctx['work'] / agent), model=env['OC_MODEL'], api_key=ctx['key'],
                          agent=agent, prompt=prompt, budget=budget, json_key=json_key,
                          wrap_seconds=int(env.get('OC_WRAP_SECONDS') or 30)))
@@ -237,5 +259,4 @@ def _summary(env, text):
 
 
 if __name__ == '__main__':
-    import os
     sys.exit(main(os.environ))
