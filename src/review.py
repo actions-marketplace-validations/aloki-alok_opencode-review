@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -45,6 +46,7 @@ def git(cwd, *args):
 
 def sanitize(code, base):
     """Make the checkout safe to hand to OpenCode. `base` is None when the checkout is trusted."""
+    _drop_outside_links(Path(code))
     for name in OPENCODE_FILES:
         p = Path(code, name)
         if p.is_dir():
@@ -58,6 +60,18 @@ def sanitize(code, base):
                 p.write_text(git(code, 'show', f'{base}:{name}'))
             except subprocess.CalledProcessError:
                 p.unlink(missing_ok=True)  # not in the base: the PR added it
+
+
+def _drop_outside_links(code):
+    # OpenCode's outside-folder rule checks the path, not where a symlink leads (seen on 1.19.3):
+    # a PR could link to /proc/self/environ and have the key quoted back.
+    root = code.resolve()
+    for dirpath, dirs, files in os.walk(code):
+        dirs[:] = [d for d in dirs if d != '.git']
+        for name in dirs + files:
+            p = Path(dirpath, name)
+            if p.is_symlink() and root not in (p.resolve(), *p.resolve().parents):
+                p.unlink()
 
 
 def guide_at(code, ref, path):

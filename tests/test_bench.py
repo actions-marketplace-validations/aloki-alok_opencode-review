@@ -31,11 +31,21 @@ class MineTest(unittest.TestCase):
         self.write('app/calc.py', ''.join(f'x{i} = {i}\n' for i in range(30)) + 'def add(a, b):\n    return a + b\n')
         git(r, 'add', '-A')
         git(r, 'commit', '-qm', 'init')
-        self.merge_pr(11, 'feature/speed', 'Make add faster', 'app/calc.py',
-                      ''.join(f'x{i} = {i}\n' for i in range(30)) + 'def add(a, b):\n    return a - b\n')
+        self.merge_pr(
+            11,
+            'feature/speed',
+            'Make add faster',
+            'app/calc.py',
+            ''.join(f'x{i} = {i}\n' for i in range(30)) + 'def add(a, b):\n    return a - b\n',
+        )
         self.merge_pr(12, 'feature/docs', 'Add docs', 'README.md', 'docs\n')
-        self.merge_pr(13, 'fix/add-sign', 'Fix add sign', 'app/calc.py',
-                      ''.join(f'x{i} = {i}\n' for i in range(30)) + 'def add(a, b):\n    return a + b\n')
+        self.merge_pr(
+            13,
+            'fix/add-sign',
+            'Fix add sign',
+            'app/calc.py',
+            ''.join(f'x{i} = {i}\n' for i in range(30)) + 'def add(a, b):\n    return a + b\n',
+        )
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -51,8 +61,15 @@ class MineTest(unittest.TestCase):
         git(self.repo, 'add', '-A')
         git(self.repo, 'commit', '-qm', title)
         git(self.repo, 'checkout', '-q', 'main')
-        git(self.repo, 'merge', '-q', '--no-ff', branch, '-m',
-            f'Merge pull request #{number} from acme/{branch}\n\n{title}')
+        git(
+            self.repo,
+            'merge',
+            '-q',
+            '--no-ff',
+            branch,
+            '-m',
+            f'Merge pull request #{number} from acme/{branch}\n\n{title}',
+        )
 
     def test_finds_the_introducing_pr(self):
         [case] = mine(self.repo, 'main', since='2000-01-01')
@@ -65,8 +82,15 @@ class MineTest(unittest.TestCase):
 
 
 def result(case, run, findings, verdicts=None, seconds=100.0, find='done'):
-    return {'case': case, 'run': run, 'find': find, 'findings': findings, 'verdicts': verdicts,
-            'seconds': seconds, 'turns': 5}
+    return {
+        'case': case,
+        'run': run,
+        'find': find,
+        'findings': findings,
+        'verdicts': verdicts,
+        'seconds': seconds,
+        'turns': 5,
+    }
 
 
 CASES = {
@@ -79,8 +103,9 @@ FAR = {'file': 'app/calc.py', 'line': 60, 'title': 'other'}
 
 class ScoreTest(unittest.TestCase):
     def test_catch_needs_the_right_file_and_a_near_line(self):
-        s = score(CASES, [result('11', 0, [HIT]), result('11', 1, [FAR]),
-                          result('11', 2, [dict(HIT, file='app/other.py')])])
+        s = score(
+            CASES, [result('11', 0, [HIT]), result('11', 1, [FAR]), result('11', 2, [dict(HIT, file='app/other.py')])]
+        )
         self.assertEqual(s['cases']['11']['caught'], [True, False, False])
         self.assertAlmostEqual(s['catch_rate'], 1 / 3)
 
@@ -89,8 +114,7 @@ class ScoreTest(unittest.TestCase):
         self.assertEqual(s['cases']['11']['caught'], [False])
 
     def test_false_alarms_are_kept_findings_on_clean_cases(self):
-        s = score(CASES, [result('20', 0, [FAR, FAR], [{'index': 0, 'verdict': 'refuted'}]),
-                          result('20', 1, [])])
+        s = score(CASES, [result('20', 0, [FAR, FAR], [{'index': 0, 'verdict': 'refuted'}]), result('20', 1, [])])
         self.assertEqual(s['false_alarms'], 1)
 
     def test_spread_is_across_runs(self):
@@ -115,8 +139,14 @@ class ScoreTest(unittest.TestCase):
 
 class CompareTest(unittest.TestCase):
     def summary(self, rate, spread, timeouts=0, p90=100.0):
-        return {'catch_rate': rate, 'spread': spread, 'timeouts': timeouts, 'p90_seconds': p90,
-                'false_alarms': 0, 'runs': 9}
+        return {
+            'catch_rate': rate,
+            'spread': spread,
+            'timeouts': timeouts,
+            'p90_seconds': p90,
+            'false_alarms': 0,
+            'runs': 9,
+        }
 
     def test_within_noise(self):
         self.assertEqual(compare(self.summary(0.5, 0.3), self.summary(0.6, 0.2))['catch_rate'], 'within noise')

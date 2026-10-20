@@ -151,7 +151,8 @@ def _fetch(env, code, refs, checkout):
         capture_output=True,
         text=True,
     )
-    review.git(code, 'checkout', '-q', '--detach', checkout)
+    # Symlinks become plain files holding their target: a PR can't link outside the checkout.
+    review.git(code, '-c', 'core.symlinks=false', 'checkout', '-q', '--detach', checkout)
 
 
 def _version(opencode, work):
