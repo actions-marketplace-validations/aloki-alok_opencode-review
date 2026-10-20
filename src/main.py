@@ -153,7 +153,7 @@ def _run_job(env, log, gh, job, event, pr, key, work):
     if job.mode == 'review':
         _review(ctx, pr, head, base, merge_base, failure)
     else:
-        _ask(ctx, pr, merge_base, head, failure)
+        _ask(ctx, base, merge_base, head, failure)
 
 
 def _skip(env, log, reason):
@@ -221,9 +221,7 @@ def _review(ctx, pr, head, base, merge_base, failure):
     if failure:
         outcome = Outcome(head, 'failed', None, 'skipped', None, max_findings, failure)
     else:
-        guide_path = env.get('OC_GUIDE_PATH') or '.github/opencode-review/guide.md'
-        guide = review.guide_at(ctx['code'], base, guide_path)
-        log(f'guide: {guide_path} from the base branch ({len(guide)} chars)' if guide else 'guide: none')
+        guide = _guide(ctx, base)
         r = review.review(
             ctx['model'],
             ctx['code'],
@@ -252,7 +250,15 @@ def _review(ctx, pr, head, base, merge_base, failure):
     )
 
 
-def _ask(ctx, pr, merge_base, head, failure):
+def _guide(ctx, ref):
+    """The repo guide at `ref`: the PR's base, or the default branch for an issue. Never the PR's copy."""
+    path = ctx['env'].get('OC_GUIDE_PATH') or '.github/opencode-review/guide.md'
+    guide = review.guide_at(ctx['code'], ref, path)
+    ctx['log'](f'guide: {path} ({len(guide)} chars)' if guide else f'guide: none at {path}')
+    return guide
+
+
+def _ask(ctx, base, merge_base, head, failure):
     env, log, gh, job, code = ctx['env'], ctx['log'], ctx['gh'], ctx['job'], ctx['code']
     if failure:
         answer = f'I could not answer: {failure}.'
@@ -266,7 +272,15 @@ def _ask(ctx, pr, merge_base, head, failure):
         if job.is_pr:
             (code / '.review/diff.patch').write_text(build(code, merge_base, head)[0])
         budget = parse_budget(env.get('OC_ASK_BUDGET') or '16:240')
-        r = review.one_pass(ctx['model'], code, ctx['work'], 'ask', review.prompt('ask.md', budget.turns), budget, None)
+        r = review.one_pass(
+            ctx['model'],
+            code,
+            ctx['work'],
+            'ask',
+            review.prompt('ask.md', budget.turns, _guide(ctx, base or 'HEAD')),
+            budget,
+            None,
+        )
         log(f'ask pass: {r.status}, {r.turns} turns, {r.seconds} s')
         answer = r.answer or 'I could not finish an answer in time. :( Try a narrower question.'
     gh.reply(job.number, job.comment_id, job.comment_kind, _answer_body(log.mask(answer)))

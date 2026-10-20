@@ -347,6 +347,17 @@ class ActionTest(unittest.TestCase):
         self.assertEqual(call['tree']['.review/question.md'].strip(), 'where is add?')
         self.assertIn('Makes add correct.', call['tree']['.review/thread.md'])
 
+    def test_question_gets_the_repo_guide_from_the_base(self):
+        # The answer needs the same repo context the review gets, and a PR can't swap it.
+        self.run_action('issue_comment', self.comment_event('/oc where is add?'), {'ask': {'run': [[0, text('ok')]]}})
+        prompt = self.calls_made()[0]['argv'][-1]
+        self.assertIn('GUIDE FROM BASE', prompt)
+        self.assertNotIn('GUIDE FROM PR', prompt)
+
+    def test_question_on_issue_gets_the_default_branch_guide(self):
+        self.run_action('issue_comment', self.comment_event('/oc hi', number=8, on_pr=False), {'ask': {'run': [[0, text('ok')]]}})
+        self.assertIn('GUIDE FROM BASE', self.calls_made()[0]['argv'][-1])
+
     def test_question_on_issue_reads_default_branch(self):
         plan = {'ask': {'run': [[0, text('In app/calc.py.')]]}}
         self.run_action('issue_comment', self.comment_event('/oc where is add?', number=8, on_pr=False), plan)
