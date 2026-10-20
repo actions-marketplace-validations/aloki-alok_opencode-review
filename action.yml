@@ -27,6 +27,9 @@ inputs:
   review-budget:
     description: auto (sized to the change), or turns:seconds for the find pass.
     default: auto
+  verify-budget:
+    description: auto, or turns:seconds for the second pass that tries to refute each finding.
+    default: auto
   ask-budget:
     description: turns:seconds for answering a question.
     default: '16:240'
@@ -62,6 +65,7 @@ runs:
         OC_MAX_FINDINGS: ${{ inputs.max-findings }}
         OC_REVIEW_BUDGET: ${{ inputs.review-budget }}
         OC_ASK_BUDGET: ${{ inputs.ask-budget }}
+        OC_VERIFY_BUDGET: ${{ inputs.verify-budget }}
         OC_TURN_P90: ${{ inputs.turn-p90 }}
         OC_ASSOCIATIONS: ${{ inputs.allowed-associations }}
         OC_ALLOW_PUBLIC_SELF_HOSTED: ${{ inputs.allow-public-self-hosted }}

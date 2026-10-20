@@ -54,6 +54,7 @@ def run_one(a, model, case, run):
             a.budget,
             5,
             lines.append,
+            a.verify_budget,
         )
         out.mkdir(parents=True, exist_ok=True)
         for log in (tmp / 'work').rglob('*.log'):
@@ -95,6 +96,7 @@ def main():
     ap.add_argument('--guide-file')
     ap.add_argument('--guide-path')
     ap.add_argument('--budget', default='auto')
+    ap.add_argument('--verify-budget', default='auto')
     ap.add_argument('--turn-p90', type=float, default=18)
     ap.add_argument('--opencode', default='opencode')
     ap.add_argument('--only', default='')

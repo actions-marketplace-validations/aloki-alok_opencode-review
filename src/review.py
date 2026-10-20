@@ -104,7 +104,9 @@ def one_pass(m, code, work, agent, text, budget, json_key):
     )
 
 
-def review(m, code, work, merge_base, head, pr_text, guide, budget_text='auto', max_findings=5, log=print):
+def review(
+    m, code, work, merge_base, head, pr_text, guide, budget_text='auto', max_findings=5, log=print, verify_budget='auto'
+):
     """Find pass, then a refute pass if anything was found. Writes the inputs to `code/.review/`."""
     review_dir = Path(code, '.review')
     review_dir.mkdir(exist_ok=True)
@@ -123,7 +125,7 @@ def review(m, code, work, merge_base, head, pr_text, guide, budget_text='auto', 
     verify, verdicts, checked = 'skipped', None, None
     if findings:
         (review_dir / 'findings.json').write_text(json.dumps({'findings': findings}, indent=1))
-        vb = Budget(max(3, int(VERIFY_SECONDS // m.turn_p90)), VERIFY_SECONDS)
+        vb = parse_budget(verify_budget) or Budget(max(3, int(VERIFY_SECONDS // m.turn_p90)), VERIFY_SECONDS)
         checked = one_pass(m, code, work, 'verify', prompt('verify.md', vb.turns, guide), vb, 'verdicts')
         verdicts = checked.result['verdicts'] if checked.result else None
         verify = 'done' if verdicts is not None else 'failed' if checked.status == 'failed' else 'timeout'

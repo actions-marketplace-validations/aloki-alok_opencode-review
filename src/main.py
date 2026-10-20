@@ -235,6 +235,7 @@ def _review(ctx, pr, head, base, merge_base, failure):
             env.get('OC_REVIEW_BUDGET') or 'auto',
             max_findings,
             log,
+            env.get('OC_VERIFY_BUDGET') or 'auto',
         )
         outcome = r.outcome
         outcome.reason = log.mask(outcome.reason)

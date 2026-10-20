@@ -108,6 +108,7 @@ All optional except `model` and `api-key`.
 | `guide-path` | `.github/opencode-review/guide.md` | Repo guide, read from the base branch. |
 | `max-findings` | `5` | Most findings in one comment. |
 | `review-budget` | `auto` | `auto` sizes the review to the change: 90 s up to 20 changed code lines, 180 s up to 300, else 240 s. Or `turns:seconds`. |
+| `verify-budget` | `auto` | `turns:seconds` for the second pass. `auto` is 120 s. |
 | `ask-budget` | `16:240` | `turns:seconds` for an answer. |
 | `turn-p90` | `18` | Seconds one model turn takes at p90. Raise it for a slower model. |
 | `allowed-associations` | `OWNER,MEMBER,COLLABORATOR` | Who may use commands. |
@@ -130,7 +131,7 @@ from the provider shows up in the comment instead.
 
 ## Runners
 
-GitHub-hosted Ubuntu runners work as they are. A self-hosted runner needs `python3` (3.9 or later),
+GitHub-hosted Ubuntu runners work as they are. A self-hosted runner needs `python3` (3.11 or later),
 `git` and `npm`, or set `opencode-path` to skip the install. No `gh` CLI is needed.
 
 On a self-hosted runner, give reviews their own label (`runs-on: [self-hosted, ai-review]`) so they
