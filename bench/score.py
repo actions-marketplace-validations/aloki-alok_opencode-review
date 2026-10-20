@@ -60,7 +60,7 @@ def score(cases, results):
         'catch_rate_by_run': rates,
         'spread': max(rates) - min(rates) if rates else 0.0,
         'false_alarms': false_alarms,
-        'timeouts': sum(r['find'] == 'timeout' for r in results),
+        'timeouts': sum(r['find'] in ('timeout', 'limit') for r in results),  # cut off by time or turns
         'no_answer': sum(r.get('findings') is None for r in results),
         'p50_seconds': _rank(seconds, 0.5),
         'p90_seconds': _rank(seconds, 0.9),

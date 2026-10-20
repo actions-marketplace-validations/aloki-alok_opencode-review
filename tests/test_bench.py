@@ -132,6 +132,10 @@ class ScoreTest(unittest.TestCase):
         self.assertEqual(s['p90_seconds'], 100.0)
         self.assertEqual(s['timeouts'], 1)
 
+    def test_turn_limit_counts_as_cut_off(self):
+        rs = [result('11', 0, [], find='limit'), result('11', 1, [], find='timeout'), result('11', 2, [])]
+        self.assertEqual(score(CASES, rs)['timeouts'], 2)
+
     def test_no_json_counts_as_failed_not_clean(self):
         s = score(CASES, [result('11', 0, None, find='timeout')])
         self.assertEqual(s['no_answer'], 1)

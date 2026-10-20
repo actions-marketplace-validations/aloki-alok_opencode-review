@@ -17,6 +17,8 @@ import subprocess
 MERGE = re.compile(r'Merge pull request #(\d+) from [^/\s]+/(\S+)')
 SQUASH = re.compile(r'^(.*) \(#(\d+)\)$')
 FIX = re.compile(r'^(fix|hotfix|bugfix|bug)\b|^fix(\(.*\))?:', re.I)
+TRAILER = re.compile(r'^\s*[\w-]+-by:', re.I)  # Co-authored-by, Signed-off-by: names and emails
+EMAIL = re.compile(r'[\w.+-]+@[\w-]+\.[\w.]+')
 SKIP = re.compile(r'(^|/)(tests?|spec|__tests__)/|_test\.|\.test\.|\.spec\.|\.(md|rst|txt|lock|po|pot)$')
 MIN_SHARE = 0.6
 
@@ -34,10 +36,11 @@ def landings(repo, branch):
             continue
         sha, date, subject, body = rec.strip('\n').split('\x00', 3)
         if m := MERGE.match(subject):
-            lines = [ln for ln in body.splitlines() if ln.strip()]
+            lines = [EMAIL.sub('', ln) for ln in body.splitlines() if ln.strip() and not TRAILER.match(ln)]
             title = lines[0] if lines else subject
             out[sha] = (m[1], title, '\n'.join(lines[1:]), m[2], date)
         elif m := SQUASH.match(subject):
+            body = '\n'.join(EMAIL.sub('', ln) for ln in body.splitlines() if not TRAILER.match(ln))
             out[sha] = (m[2], m[1], body.strip(), '', date)
     return out
 
