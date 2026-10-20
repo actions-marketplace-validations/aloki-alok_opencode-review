@@ -1,6 +1,7 @@
-# OpenCode code review :)
+# OpenCode code review
 
 [![GitHub Marketplace](https://img.shields.io/badge/Marketplace-OpenCode%20code%20review-blue?logo=github)](https://github.com/marketplace/actions/opencode-code-review)
+[![Website](https://img.shields.io/badge/website-aloki--alok.github.io-blue)](https://aloki-alok.github.io/opencode-review/)
 
 AI code review for your pull requests, and answers to `/oc` questions, run by
 [OpenCode](https://opencode.ai) inside your own GitHub Actions with your own model key.

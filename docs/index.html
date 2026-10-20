@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenCode code review: AI pull request review in GitHub Actions</title>
+<meta name="description" content="Free, open source GitHub Action that reviews every pull request with OpenCode and answers /oc questions. Read-only, runs in your own Actions with your own model key. Works with OpenRouter, Anthropic, OpenAI and any OpenCode provider.">
+<link rel="canonical" href="https://aloki-alok.github.io/opencode-review/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="OpenCode code review">
+<meta property="og:description" content="AI code review for your pull requests, run by OpenCode in your own GitHub Actions. Read-only, your model key.">
+<meta property="og:url" content="https://aloki-alok.github.io/opencode-review/">
+<meta property="og:image" content="https://aloki-alok.github.io/opencode-review/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="author" content="Alok Ranjan">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@graph":[
+{"@type":"SoftwareApplication","name":"OpenCode code review","applicationCategory":"DeveloperApplication","operatingSystem":"GitHub Actions (Linux, macOS)","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"license":"https://opensource.org/licenses/MIT","url":"https://aloki-alok.github.io/opencode-review/","codeRepository":"https://github.com/aloki-alok/opencode-review","sameAs":["https://github.com/aloki-alok/opencode-review","https://github.com/marketplace/actions/opencode-code-review"],"author":{"@type":"Person","name":"Alok Ranjan","url":"https://alokranjan.me","sameAs":["https://github.com/aloki-alok"]},"description":"Read-only AI review of pull requests, and answers to /oc questions, run by OpenCode in your own GitHub Actions."},
+{"@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Does it cost anything?","acceptedAnswer":{"@type":"Answer","text":"The action is free and MIT licensed. You pay your model provider for the tokens each review uses, and GitHub for runner minutes if your plan charges for them."}},
+{"@type":"Question","name":"Can the AI change my code or approve my pull request?","acceptedAnswer":{"@type":"Answer","text":"No. The model can only read files. It has no edit, shell or web tools, and the action only posts comments. It never approves or blocks a merge."}},
+{"@type":"Question","name":"Which models does it support?","acceptedAnswer":{"@type":"Answer","text":"Any model OpenCode supports, set as provider/model. OpenRouter is the default, and Anthropic, OpenAI, Google and others work with their own key."}},
+{"@type":"Question","name":"Does it work on pull requests from forks?","acceptedAnswer":{"@type":"Answer","text":"No. Fork pull requests are skipped so your model key never reaches code from outside your team."}},
+{"@type":"Question","name":"Can I run it on a self-hosted runner?","acceptedAnswer":{"@type":"Answer","text":"Yes, for private repos. The runner needs python3 3.11 or later, git and npm. On a public repo the action refuses to run on a self-hosted runner unless you opt in."}}
+]}]}
+</script>
+<style>
+/* Layout: a 1990s personal homepage. One column, grey page, Times and Courier, beveled buttons. Single look on purpose. */
+:root {
+  --page: #c0c0c0; --paper: #ffffff; --ink: #000000; --link: #0000ee; --visited: #551a8b;
+  --hi: #ffffff; --lo: #808080; --dark: #000000; --title: #000080; --note: #ffffcc;
+  --serif: 'Times New Roman', Times, serif;
+  --mono: 'Courier New', Courier, monospace;
+  color-scheme: light;
+}
+* { box-sizing: border-box }
+body { margin: 0; background: var(--page); color: var(--ink); font: 18px/1.45 var(--serif);
+  padding: 16px max(16px, env(safe-area-inset-right, 0px)) 32px max(16px, env(safe-area-inset-left, 0px)) }
+.page { max-width: 48em; margin: 0 auto; background: var(--paper); padding: 20px 24px 28px;
+  border: 2px solid; border-color: var(--hi) var(--dark) var(--dark) var(--hi); box-shadow: inset -1px -1px var(--lo), inset 1px 1px #dfdfdf }
+a { color: var(--link) } a:visited { color: var(--visited) }
+a:focus-visible { outline: 2px dotted var(--ink); outline-offset: 2px }
+h1 { font-size: 2.3rem; line-height: 1.1; text-align: center; color: var(--title); margin: .2em 0 .1em }
+.tagline { text-align: center; font-style: italic; margin: 0 0 .6em }
+h2 { font-size: 1.5rem; color: var(--title); margin: 1.4em 0 .4em }
+h3 { font-size: 1.15rem; margin: 1.1em 0 .3em }
+hr { border: 0; border-top: 2px groove #c0c0c0; margin: 1.4em 0 }
+p { margin: 0 0 .8em }
+code, pre, kbd { font-family: var(--mono); font-size: .9em }
+pre { background: var(--paper); border: 2px inset #c0c0c0; padding: 10px; overflow-x: auto; margin: 0; line-height: 1.35 }
+.center { text-align: center }
+.btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 14px 0 }
+.btn { display: inline-block; font: 16px var(--serif); color: var(--ink) !important; text-decoration: none; background: #c0c0c0;
+  padding: 5px 14px; border: 2px solid; border-color: var(--hi) var(--dark) var(--dark) var(--hi); box-shadow: inset -1px -1px var(--lo) }
+.btn:active { border-color: var(--dark) var(--hi) var(--hi) var(--dark); box-shadow: inset 1px 1px var(--lo) }
+.nav { text-align: center; font-size: .95rem }
+.new { color: #ff0000; font-weight: bold; font-family: var(--mono); font-size: .8em }
+.comment { background: var(--note); border: 1px solid var(--ink); padding: 10px 14px; font-size: .95rem }
+.comment p { margin: 0 0 .4em }
+.wrap-table { overflow-x: auto }
+table { border-collapse: collapse; width: 100%; font-size: .95rem }
+th, td { border: 1px solid var(--lo); padding: 5px 8px; text-align: left; vertical-align: top }
+th { background: #c0c0c0 }
+td code { white-space: nowrap }
+.copy { font: 14px var(--serif); background: #c0c0c0; border: 2px solid; border-color: var(--hi) var(--dark) var(--dark) var(--hi); padding: 2px 10px; cursor: pointer; margin: 0 0 6px }
+.counter { display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: center; vertical-align: middle }
+footer { font-size: .9rem; text-align: center }
+@media (max-width: 600px) { body { font-size: 17px } .page { padding: 14px 14px 20px } h1 { font-size: 1.8rem } }
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>OpenCode code review</h1>
+<p class="tagline">AI code review for your pull requests, run by OpenCode in your own GitHub Actions.</p>
+<div class="btns">
+  <a class="btn" href="#setup">Set it up</a>
+  <a class="btn" href="https://github.com/aloki-alok/opencode-review">Source on GitHub</a>
+  <a class="btn" href="https://github.com/marketplace/actions/opencode-code-review">GitHub Marketplace</a>
+</div>
+<p class="nav">
+  <a href="#what">What it does</a> | <a href="#setup">Setup</a> | <a href="#ask">/oc questions</a> |
+  <a href="#how">How it works</a> | <a href="#security">Security</a> | <a href="#settings">Settings</a> |
+  <a href="#faq">FAQ</a> | <a href="#links">Links</a>
+</p>
+<hr>
+
+<h2 id="what">What it does</h2>
+<p>Every time someone opens or updates a pull request, OpenCode reads the change, follows it through your repo, and leaves <b>one short comment</b> with the defects the change introduces. A second pass tries to prove each finding wrong before you see it. The comment is edited on every push, never duplicated.</p>
+<p>Here is a real one:</p>
+<div class="comment">
+  <p><b>Changes needed: 1 thing. :/</b></p>
+  <p>1. add() subtracts instead of adds (<code>app/calc.py:2</code>). Restore <code>return a + b</code></p>
+  <p><small>OpenCode review of 48d310a98, advisory. Reply if a finding is wrong.</small></p>
+</div>
+<ul>
+  <li><b>Read-only.</b> The model can read your code and nothing else: no edits, no shell, no web.</li>
+  <li><b>Your runner, your model.</b> Any model OpenCode supports. OpenRouter by default. No service to sign up for, nothing stored anywhere.</li>
+  <li><b>Short.</b> At most 5 findings, under 150 words, no praise and no style nits.</li>
+  <li><b>Free and open source.</b> MIT licensed. You only pay your model provider.</li>
+</ul>
+
+<h2 id="setup">Set it up in two steps <span class="new">NEW!</span></h2>
+<p><b>1. Add your model key as a secret.</b> In your repo: Settings, Secrets and variables, Actions, New repository secret. Name it <code>OPENROUTER_API_KEY</code>. Get a key at <a href="https://openrouter.ai/keys">openrouter.ai/keys</a>.</p>
+<p><b>2. Add this file</b> as <code>.github/workflows/opencode-review.yml</code>:</p>
+<button class="copy" type="button">Copy to clipboard</button>
+<pre id="workflow"><code>name: OpenCode review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+permissions: {}
+
+concurrency:
+  group: >-
+    opencode-review-${{ github.event_name == 'pull_request'
+    &amp;&amp; format('pr-{0}', github.event.pull_request.number)
+    || format('comment-{0}', github.event.comment.id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  opencode:
+    if: github.event_name == 'pull_request' || startsWith(github.event.comment.body, '/oc')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: aloki-alok/opencode-review@v0
+        with:
+          model: openrouter/deepseek/deepseek-v4.1-flash
+          api-key: ${{ secrets.OPENROUTER_API_KEY }}</code></pre>
+<p>That's it. Open a pull request and a review appears in a few minutes. :D</p>
+<p>Two things to know:</p>
+<ul>
+  <li><code>/oc</code> commands start working once this file is on your default branch. GitHub runs comment triggers from there only.</li>
+  <li>If your organization limits which actions may run, allow <code>aloki-alok/opencode-review@*</code>.</li>
+</ul>
+<p>Want it smarter about your repo? Copy <a href="https://github.com/aloki-alok/opencode-review/blob/main/templates/guide.md">templates/guide.md</a> to <code>.github/opencode-review/guide.md</code> and write a few lines about what the project is and the rules that matter. The reviewer reads it first. It also reads your <code>AGENTS.md</code>, both from the base branch, so a pull request can't rewrite the rules for its own review.</p>
+
+<h2 id="ask">Ask questions with /oc</h2>
+<p>Comment on any issue or pull request:</p>
+<div class="wrap-table"><table>
+  <tr><th>Comment</th><th>Does</th></tr>
+  <tr><td><code>/oc why does this retry twice?</code></td><td>Answers in the thread with <code>file:line</code> references. On a pull request it reads the PR's code and diff.</td></tr>
+  <tr><td><code>/oc review</code></td><td>Runs the review again and updates the review comment.</td></tr>
+</table></div>
+<p>Only repo owners, members and collaborators can use commands. Bots and pull requests from forks are ignored.</p>
+
+<h2 id="how">How it works</h2>
+<ol>
+  <li>The action fetches the pull request's head, its base and their merge base, and builds the diff. Lockfiles, translations and minified files are left out.</li>
+  <li><b>Find pass:</b> OpenCode reads the diff, follows callers and types through the repo, and lists the defects it can back with a concrete scenario.</li>
+  <li><b>Refute pass:</b> a second OpenCode run tries to prove each finding wrong. Only the ones that survive are posted.</li>
+  <li>The comment is written and edited in place. The job summary shows times, turns and the model.</li>
+</ol>
+<p>Time is sized to the change: 90 seconds up to 20 changed code lines, 180 up to 300, and 240 for anything bigger. If a pass runs out of time, OpenCode is stopped and asked for what it found so far, so work is not thrown away. A new push cancels the review of the old commit.</p>
+
+<h3>Reading the comment</h3>
+<div class="wrap-table"><table>
+  <tr><th>Starts with</th><th>Means</th></tr>
+  <tr><td><code>Changes needed: 2 things. :/</code></td><td>Defects found and double-checked. Each names the file, the line and a fix.</td></tr>
+  <tr><td><code>Nothing blocking found. :)</code></td><td>The review finished and found nothing worth blocking on.</td></tr>
+  <tr><td><code>... Stopped at the time limit</code></td><td>It ran out of time but kept what it found.</td></tr>
+  <tr><td><code>Review did not finish ... -_-</code></td><td>Out of time with nothing to show. Comment <code>/oc review</code> to retry.</td></tr>
+  <tr><td><code>Review failed for ... :(</code></td><td>Something is set up wrong, like a dead API key. The reason says what.</td></tr>
+</table></div>
+
+<h2 id="security">Security</h2>
+<ul>
+  <li><b>The model only reads.</b> Every OpenCode tool is denied except read, glob, grep and list. Reads outside the checkout are denied, and so are symlinks that lead out of it.</li>
+  <li><b>The pull request can't change the reviewer.</b> The action's code and prompts come from its pinned version. The PR's <code>opencode.json</code> and <code>.opencode/</code> folder are removed before OpenCode starts.</li>
+  <li><b>Secrets stay out of reach.</b> OpenCode gets only the model key. The GitHub token is never in its environment and never written to disk. Logs mask the key.</li>
+  <li><b>Only members trigger it.</b> Bot comments, drafts, Dependabot and fork pull requests are skipped.</li>
+  <li><b>Prompt injection</b> can at worst produce a misleading comment, because the model can't act. Treat the review as advice, never as an approval gate.</li>
+</ul>
+<p>Full details in <a href="https://github.com/aloki-alok/opencode-review/blob/main/SECURITY.md">SECURITY.md</a>.</p>
+
+<h2 id="settings">Settings</h2>
+<p>All optional except <code>model</code> and <code>api-key</code>.</p>
+<div class="wrap-table"><table>
+  <tr><th>Input</th><th>Default</th><th>What it does</th></tr>
+  <tr><td><code>model</code></td><td>required</td><td>OpenCode model as <code>provider/model</code>.</td></tr>
+  <tr><td><code>api-key</code></td><td>required</td><td>Key for the model's provider.</td></tr>
+  <tr><td><code>guide-path</code></td><td><code>.github/opencode-review/guide.md</code></td><td>Repo guide, read from the base branch.</td></tr>
+  <tr><td><code>max-findings</code></td><td><code>5</code></td><td>Most findings in one comment.</td></tr>
+  <tr><td><code>review-budget</code></td><td><code>auto</code></td><td>Sized to the change, or <code>turns:seconds</code>.</td></tr>
+  <tr><td><code>ask-budget</code></td><td><code>16:240</code></td><td><code>turns:seconds</code> for an answer.</td></tr>
+  <tr><td><code>allowed-associations</code></td><td><code>OWNER,MEMBER,COLLABORATOR</code></td><td>Who may use commands.</td></tr>
+  <tr><td><code>opencode-path</code></td><td></td><td>Use an <code>opencode</code> already on the runner.</td></tr>
+</table></div>
+<p>Every input is in the <a href="https://github.com/aloki-alok/opencode-review#settings">README</a>. To use another provider, change two lines:</p>
+<pre><code>with:
+  model: anthropic/claude-sonnet-5-5
+  api-key: ${{ secrets.ANTHROPIC_API_KEY }}</code></pre>
+
+<h2 id="faq">FAQ</h2>
+<h3>Does it cost anything?</h3>
+<p>The action is free and MIT licensed. You pay your model provider for the tokens each review uses, and GitHub for runner minutes if your plan charges for them.</p>
+<h3>Can the AI change my code or approve my pull request?</h3>
+<p>No. The model can only read files. It has no edit, shell or web tools, and the action only posts comments. It never approves or blocks a merge.</p>
+<h3>Which models does it support?</h3>
+<p>Any model <a href="https://opencode.ai">OpenCode</a> supports, set as <code>provider/model</code>. OpenRouter is the default, and Anthropic, OpenAI, Google and others work with their own key.</p>
+<h3>Does it work on pull requests from forks?</h3>
+<p>No. Fork pull requests are skipped so your model key never reaches code from outside your team.</p>
+<h3>Can I run it on a self-hosted runner?</h3>
+<p>Yes, for private repos. The runner needs <code>python3</code> 3.11 or later, <code>git</code> and <code>npm</code>. Give reviews their own label so they don't wait behind builds. On a public repo the action refuses to run on a self-hosted runner unless you opt in.</p>
+<h3>How do I know a prompt or model change made it better?</h3>
+<p>The repo ships a <a href="https://github.com/aloki-alok/opencode-review/tree/main/bench">bench</a> that replays real bug-introducing pull requests several times each and reports the catch rate, false alarms, timing and the spread between runs. 17 public cases from httpx, click and flask are included.</p>
+
+<hr>
+<h2 id="links">Links</h2>
+<ul>
+  <li><a href="https://github.com/aloki-alok/opencode-review">opencode-review on GitHub</a>: source, issues and releases</li>
+  <li><a href="https://github.com/marketplace/actions/opencode-code-review">OpenCode code review on the GitHub Marketplace</a></li>
+  <li><a href="https://github.com/aloki-alok/opencode-review/releases">Release notes</a></li>
+  <li><a href="https://github.com/aloki-alok/opencode-review/blob/main/templates/workflow.yml">Workflow template</a>, with a comment on every line</li>
+  <li><a href="https://opencode.ai">OpenCode</a>: the open source coding agent this runs</li>
+  <li><a href="https://openrouter.ai">OpenRouter</a>: one key for many models</li>
+  <li>Made by <a href="https://alokranjan.me">Alok Ranjan</a> (<a href="https://github.com/aloki-alok">@aloki-alok</a>)</li>
+</ul>
+<p class="center">
+  <span class="counter">
+    <a href="https://github.com/aloki-alok/opencode-review/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/aloki-alok/opencode-review?style=flat-square&amp;label=stars" height="20"></a>
+    <a href="https://github.com/aloki-alok/opencode-review/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/aloki-alok/opencode-review?style=flat-square" height="20"></a>
+  </span>
+</p>
+<p class="center">Found a wrong finding or a bug? <a href="https://github.com/aloki-alok/opencode-review/issues/new">Sign the guestbook</a> (open an issue). ;)</p>
+<hr>
+<footer>
+  MIT licensed. Not affiliated with OpenCode or its authors.<br>
+  Best viewed in any browser at any resolution.
+</footer>
+</div>
+<script>
+document.querySelector('.copy').addEventListener('click', async e => {
+  const b = e.currentTarget, pre = document.getElementById('workflow')
+  try { await navigator.clipboard.writeText(pre.innerText); b.textContent = 'Copied!' }
+  catch { getSelection().selectAllChildren(pre); b.textContent = 'Press Ctrl+C' }
+  setTimeout(() => b.textContent = 'Copy to clipboard', 1600)
+})
+</script>
+</body>
+</html>

@@ -1,3 +1,4 @@
+import html
 import re
 import unittest
 
@@ -18,6 +19,11 @@ class DocsTest(unittest.TestCase):
         # People copy the README's block, the CI lints the template: they must be the same file.
         readme = (ROOT / 'README.md').read_text()
         block = re.search(r'```yaml\n(name: OpenCode review\n.*?)```', readme, re.S)[1]
+        self.assertEqual(code_only(block), code_only((ROOT / 'templates/workflow.yml').read_text()))
+
+    def test_site_workflow_matches_the_template(self):
+        site = (ROOT / 'docs/index.html').read_text()
+        block = html.unescape(re.search(r'<pre id="workflow"><code>(.*?)</code></pre>', site, re.S)[1])
         self.assertEqual(code_only(block), code_only((ROOT / 'templates/workflow.yml').read_text()))
 
 
