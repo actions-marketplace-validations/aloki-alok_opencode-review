@@ -99,9 +99,23 @@ class RunnerTest(unittest.TestCase):
     def test_finished_without_json_is_asked_for_it(self):
         # The step cap makes OpenCode stop with a text summary and no JSON.
         self.plan(run=[[0, STEP], [0, text('I looked at a.py and found an issue.')]], resume=[[0, text(FINDINGS)]])
-        r = self.run_it()
+        r = self.run_it(Budget(1, 30))
         self.assertEqual(r.status, 'limit')  # the comment must say the turn cap ended it
         self.assertEqual(len(r.result['findings']), 1)
+
+    def test_step_cap_after_a_streamed_finding_still_wraps_up(self):
+        # A FINDING line is not the final answer: the wrap-up must still run and the cap be named.
+        line = 'FINDING {"file": "a.py", "line": 1, "title": "t"}'
+        self.plan(run=[[0, STEP]] * 5 + [[0, text(line + '\nnow reading b.py')]], resume=[[0, text(FINDINGS)]])
+        r = self.run_it(Budget(5, 30))
+        self.assertEqual(r.status, 'limit')
+        self.assertEqual(len(self.calls_made()), 2)
+
+    def test_prose_ending_before_the_cap_is_not_a_limit(self):
+        self.plan(run=[[0, STEP], [0, text('I found nothing.')]], resume=[[0, text('{"findings": []}')]])
+        r = self.run_it(Budget(5, 30))
+        self.assertEqual(r.status, 'done')
+        self.assertEqual(r.result, {'findings': []})
 
     def test_error_with_no_session_fails(self):
         self.plan(

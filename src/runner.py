@@ -165,7 +165,7 @@ def run_pass(p):
     sid, n = session_id(log), turns(log)
 
     def done():
-        return find_json(log, p.json_key) is not None if p.json_key else bool(last_text(log))
+        return find_json(log, p.json_key, strict=True) is not None if p.json_key else bool(last_text(log))
 
     # Out of time, or the step cap ended it with prose: ask the same session for the answer.
     wrapped = bool(sid) and (timed_out or not done())
@@ -174,7 +174,8 @@ def run_pass(p):
         _run(p, ['--session', sid, '--agent', 'wrap', WRAP[bool(p.json_key)]], p.wrap_seconds, wrap_path)
         log += '\n' + wrap_path.read_text(errors='replace')
 
-    status = 'timeout' if timed_out else 'limit' if wrapped else 'done' if sid else 'failed'
+    capped = wrapped and n >= p.budget.turns  # the step cap ended it, not the model
+    status = 'timeout' if timed_out else 'limit' if capped else 'done' if sid else 'failed'
     r = Result(status, turns=n, seconds=round(time.monotonic() - start, 1))
     if p.json_key:
         r.result = find_json(log, p.json_key)

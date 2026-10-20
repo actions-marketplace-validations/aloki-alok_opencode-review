@@ -24,13 +24,14 @@ def _texts(log):
             yield part['text']
 
 
-def find_json(log, key):
-    """The last JSON object in the model's text whose `key` is a list, or None."""
+def find_json(log, key, strict=False):
+    """The last JSON object in the model's text whose `key` is a list, or None. Unless `strict`,
+    falls back to the FINDING/VERDICT lines streamed along the way."""
     found = None
     for t in _texts(log):
         # A model sometimes prints the JSON with its quotes escaped: {\"findings\": []}.
         found = _last_json(t, key) or _last_json(t.replace('\\"', '"'), key) or found
-    return found or _running_lines(log, key)
+    return found or (None if strict else _running_lines(log, key))
 
 
 # Written one at a time as the model goes, so a run killed before its final JSON keeps them.
@@ -45,7 +46,7 @@ def _running_lines(log, key):
                 obj = json.loads(m[1])
             except ValueError:
                 continue
-            if isinstance(obj, dict):
+            if isinstance(obj, dict) and obj not in items:  # a wrap-up may repeat a line
                 items.append(obj)
     return {key: items} if items else None
 

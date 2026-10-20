@@ -64,7 +64,7 @@ class RenderTest(unittest.TestCase):
 
     def test_step_limit_reads_like_a_limit(self):
         self.assertNotIn('Nothing blocking', out(find='limit', findings=[]))
-        self.assertIn('limit', out(find='limit', findings=[]))
+        self.assertIn('turn limit', out(find='limit', findings=[]))
 
     def test_all_refuted_is_nothing_blocking(self):
         v = [{'index': 0, 'verdict': 'refuted'}]

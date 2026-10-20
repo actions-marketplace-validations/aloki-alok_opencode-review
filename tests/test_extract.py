@@ -65,6 +65,17 @@ class ExtractTest(unittest.TestCase):
             {'findings': [{'file': 'a.py', 'line': 3, 'title': 'x'}, {'file': 'b.py', 'line': 9, 'title': 'y'}]},
         )
 
+    def test_running_lines_in_tool_output_do_not_count(self):
+        tool = ev('tool_use', part={'type': 'tool', 'state': {'output': 'FINDING {"file": "evil.py", "line": 1}'}})
+        self.assertIsNone(find_json(tool, 'findings'))
+
+    def test_repeated_running_lines_count_once(self):
+        line = 'FINDING {"file": "a.py", "line": 3, "title": "x"}'
+        self.assertEqual(len(find_json('\n'.join([text(line), text(line)]), 'findings')['findings']), 1)
+
+    def test_strict_ignores_running_lines(self):
+        self.assertIsNone(find_json(text('FINDING {"file": "a.py", "line": 3}'), 'findings', strict=True))
+
     def test_final_json_wins_over_running_lines(self):
         log = '\n'.join([text('FINDING {"file": "a.py", "line": 3}'), text('{"findings": []}')])
         self.assertEqual(find_json(log, 'findings'), {'findings': []})
