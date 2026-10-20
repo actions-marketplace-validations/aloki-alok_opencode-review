@@ -10,7 +10,7 @@ MARKER = '<!-- opencode-review -->'
 @dataclass
 class Outcome:
     sha: str
-    find: str  # done | timeout | failed
+    find: str  # done | timeout (time cap) | limit (turn cap) | failed
     findings: list | None  # None: the find pass gave no JSON
     verify: str  # done | timeout | failed | skipped
     verdicts: list | None
@@ -19,6 +19,18 @@ class Outcome:
 
 
 ITEM_WORDS = 11  # per title and per fix: 5 items stay under 150 words
+
+
+LIMITS = {'timeout': 'time', 'limit': 'turn'}
+
+
+def kept_findings(findings, verdicts):
+    """Findings the second pass did not knock out. `verdicts` is None when it did not finish. A
+    finding it never reached (cut off part way) stays; refuted and unsure ones go."""
+    if verdicts is None:
+        return list(findings)
+    by_index = {v.get('index'): v.get('verdict') for v in verdicts}
+    return [f for i, f in enumerate(findings) if by_index.get(i, 'real') == 'real']
 
 
 def render(o):
@@ -31,13 +43,10 @@ def render(o):
             lines.append(f'Review did not finish for {sha}. It runs again on the next push, or comment `/oc review`.')
         return '\n'.join(lines)
 
-    checked = o.verify == 'done'
-    by_index = {v.get('index'): v.get('verdict') for v in (o.verdicts or [])}
-    kept = [f for i, f in enumerate(o.findings) if not checked or by_index.get(i) == 'real']
-    kept = kept[: o.max_findings]
+    kept = kept_findings(o.findings, o.verdicts if o.verify == 'done' else None)[: o.max_findings]
     notes = []
-    if o.find == 'timeout':
-        notes.append('Stopped at the time limit, so it may have missed things.')
+    if o.find in LIMITS:
+        notes.append(f'Stopped at the {LIMITS[o.find]} limit, so it may have missed things.')
     if kept and o.verify in ('timeout', 'failed'):
         notes.append('Second check did not finish.')
 
@@ -51,8 +60,8 @@ def render(o):
     elif o.find == 'done':
         lines.append('Nothing blocking found.')
     else:
-        lines.append('No findings before the time limit.')
-        notes = [n for n in notes if 'time limit' not in n] + ['Comment `/oc review` to run it again.']
+        lines.append(f'No findings before the {LIMITS.get(o.find, "time")} limit.')
+        notes = [n for n in notes if 'may have missed' not in n] + ['Comment `/oc review` to run it again.']
     lines += [
         '',
         f'<sub>OpenCode review of {sha}, advisory.{"".join(" " + n for n in notes)} Reply if a finding is wrong.</sub>',

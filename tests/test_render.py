@@ -54,6 +54,18 @@ class RenderTest(unittest.TestCase):
         self.assertNotIn('Bug number 2', body)
         self.assertIn('Changes needed: 1 thing.', body)
 
+    def test_cut_off_verify_keeps_unjudged_findings(self):
+        # Critic finding 6: verify judged 1 of 3. Findings it never reached stay.
+        v = [{'index': 0, 'verdict': 'refuted'}]
+        body = out(findings=[f(0), f(1), f(2)], verify='done', verdicts=v)
+        self.assertNotIn('Bug number 0', body)
+        self.assertIn('Bug number 1', body)
+        self.assertIn('Bug number 2', body)
+
+    def test_step_limit_reads_like_a_limit(self):
+        self.assertNotIn('Nothing blocking', out(find='limit', findings=[]))
+        self.assertIn('limit', out(find='limit', findings=[]))
+
     def test_all_refuted_is_nothing_blocking(self):
         v = [{'index': 0, 'verdict': 'refuted'}]
         self.assertIn('Nothing blocking found.', out(findings=[f(0)], verify='done', verdicts=v))

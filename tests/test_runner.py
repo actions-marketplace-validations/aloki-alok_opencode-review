@@ -1,4 +1,4 @@
-from helpers import ROOT, src  # noqa: F401  (puts src/ on the path)
+from helpers import fake_opencode, src  # noqa: F401  (puts src/ on the path)
 
 # isort: split
 
@@ -10,10 +10,10 @@ import time
 import unittest
 from pathlib import Path
 
+import runner
 from budget import Budget
 from runner import Pass, run_pass
 
-FAKE = str(ROOT / 'tests' / 'fake_opencode.py')
 KEY = 'sk-or-v1-secretsecretsecret'
 FINDINGS = '{"findings": [{"file": "a.py", "line": 1, "title": "t"}]}'
 
@@ -32,22 +32,21 @@ class RunnerTest(unittest.TestCase):
         self.code = self.dir / 'code'
         self.code.mkdir()
         self.calls = self.dir / 'calls.jsonl'
-        os.environ['OPENCODE_FAKE_CALLS'] = str(self.calls)
+        self.fake = fake_opencode(self.dir)
         os.environ['GITHUB_TOKEN'] = 'ghs_should_not_leak'
+        self.addCleanup(os.environ.pop, 'GITHUB_TOKEN', None)
 
     def tearDown(self):
         self.tmp.cleanup()
 
     def plan(self, **plan):
-        p = self.dir / f'plan-{len(list(self.dir.glob("plan-*")))}.json'
-        p.write_text(json.dumps(plan))
-        os.environ['OPENCODE_FAKE_PLAN'] = str(p)
+        (self.dir / 'plan.json').write_text(json.dumps(plan))
 
     def run_it(self, budget=None, key='findings', work=None):
         budget = budget or Budget(5, 2)
         return run_pass(
             Pass(
-                opencode=FAKE,
+                opencode=self.fake,
                 cwd=str(self.code),
                 work=str(work or self.dir / 'work'),
                 model='openrouter/some/model',
@@ -101,7 +100,7 @@ class RunnerTest(unittest.TestCase):
         # The step cap makes OpenCode stop with a text summary and no JSON.
         self.plan(run=[[0, STEP], [0, text('I looked at a.py and found an issue.')]], resume=[[0, text(FINDINGS)]])
         r = self.run_it()
-        self.assertEqual(r.status, 'done')
+        self.assertEqual(r.status, 'limit')  # the comment must say the turn cap ended it
         self.assertEqual(len(r.result['findings']), 1)
 
     def test_error_with_no_session_fails(self):
@@ -138,6 +137,20 @@ class RunnerTest(unittest.TestCase):
         self.assertEqual(cfg['agent']['review']['steps'], 5)
         self.assertEqual(cfg['provider']['openrouter']['options']['apiKey'], '{env:OPENCODE_REVIEW_API_KEY}')
         self.assertEqual(env['OPENCODE_REVIEW_API_KEY'], KEY)
+
+    def test_cancelled_job_leaves_no_opencode_running(self):
+        # A cancelled job (a newer push) must not leave OpenCode, which holds the key, on the runner.
+        self.plan(run=[[0, STEP], [60, text(FINDINGS)]], ignore_int=True)
+        t = threading.Thread(target=self.run_it, kwargs={'budget': Budget(5, 120)})
+        t.start()
+        deadline = time.monotonic() + 10
+        while not runner.LIVE and time.monotonic() < deadline:
+            time.sleep(0.05)
+        [proc] = list(runner.LIVE)
+        runner.stop_all()
+        self.assertIsNotNone(proc.wait(timeout=10))
+        t.join(timeout=10)
+        self.assertFalse(t.is_alive())
 
     def test_two_jobs_at_once_keep_their_own_state(self):
         self.plan(run=[[0.5, STEP], [0, text(FINDINGS)]])

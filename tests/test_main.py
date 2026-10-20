@@ -1,6 +1,6 @@
 """End to end: the action's entry point against a fake GitHub API, a real git remote and a fake OpenCode."""
 
-from helpers import ROOT, src  # noqa: F401  (puts src/ on the path)
+from helpers import fake_opencode, src  # noqa: F401  (puts src/ on the path)
 
 # isort: split
 
@@ -19,7 +19,6 @@ from render import MARKER
 
 REPO = 'acme/app'
 KEY = 'sk-or-v1-goodgoodgoodgood'
-FAKE = str(ROOT / 'tests' / 'fake_opencode.py')
 FINDING = {'file': 'app/calc.py', 'line': 2, 'severity': 'high', 'title': 'add subtracts', 'fix': 'Use +.'}
 
 
@@ -43,7 +42,7 @@ class ActionTest(unittest.TestCase):
         self.gh = FakeGitHub(REPO, KEY)
         self.make_remote()
         self.calls = self.dir / 'calls.jsonl'
-        os.environ['OPENCODE_FAKE_CALLS'] = str(self.calls)
+        self.fake = fake_opencode(self.dir)
 
     def tearDown(self):
         self.gh.close()
@@ -134,9 +133,7 @@ class ActionTest(unittest.TestCase):
         }
 
     def run_action(self, event_name, event, plan, key=KEY, **inputs):
-        p = self.dir / f'plan-{len(list(self.dir.glob("plan-*")))}.json'
-        p.write_text(json.dumps(plan))
-        os.environ['OPENCODE_FAKE_PLAN'] = str(p)
+        (self.dir / 'plan.json').write_text(json.dumps(plan))
         ev = self.dir / 'event.json'
         ev.write_text(json.dumps(event))
         summary = self.dir / 'summary.md'
@@ -152,7 +149,7 @@ class ActionTest(unittest.TestCase):
             'OC_MODEL': 'openrouter/some/model',
             'OC_API_KEY': key,
             'OC_GITHUB_TOKEN': 'ghs_token',
-            'OC_OPENCODE': FAKE,
+            'OC_OPENCODE': self.fake,
             'OC_KEY_CHECK_URL': f'{self.gh.url}/openrouter/key',
             'OC_TRIGGER': '/oc',
             'OC_GUIDE_PATH': '.github/opencode-review/guide.md',
@@ -167,8 +164,18 @@ class ActionTest(unittest.TestCase):
         env.update({f'OC_{k.upper()}': v for k, v in inputs.items()})
         (self.dir / 'runner-temp').mkdir(exist_ok=True)
         out = io.StringIO()
-        with contextlib.redirect_stdout(out):
-            code = main.main(env)
+        # In the action every input is in the process env too: OpenCode must still not get the token.
+        saved = {k: os.environ.get(k) for k in env}
+        os.environ.update(env)
+        try:
+            with contextlib.redirect_stdout(out):
+                code = main.main(env)
+        finally:
+            for k, v in saved.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
         self.log = out.getvalue()
         self.summary = summary.read_text() if summary.exists() else ''
         self.assertEqual(code, 0)  # advisory: never fails the job
@@ -408,6 +415,65 @@ class ActionTest(unittest.TestCase):
         e['repository']['private'] = False
         self.run_action('pull_request', e, {'review': FOUND})
         self.assertEqual(self.calls_made(), [])
+
+    def test_fetch_failure_posts_a_failure_and_hides_the_token(self):
+        # Critic findings 1 and 4: a crash must say so, and git's argv must not leak the token.
+        self.server = self.dir / 'no-such-server'
+        log = self.run_action('pull_request', self.pr_event(), {'review': FOUND})
+        [c] = self.review_comments()
+        self.assertIn('Review failed', c['body'])
+        self.assertNotIn('Nothing blocking', c['body'])
+        auth = 'eC1hY2Nlc3MtdG9rZW46Z2hzX3Rva2Vu'  # base64 of x-access-token:ghs_token
+        self.assertIn(f'::add-mask::{auth}', log)
+        self.assertNotIn(auth, log.replace(f'::add-mask::{auth}', ''))
+        self.assertNotIn('ghs_token', log)
+
+    def test_question_crash_still_replies(self):
+        self.server = self.dir / 'no-such-server'
+        self.run_action('issue_comment', self.comment_event('/oc where is add?'), {'ask': FOUND})
+        [a] = [c for c in self.gh.comments_on(7) if not c['body'].startswith(MARKER)]
+        self.assertIn('could not answer', a['body'])
+
+    def test_someone_elses_marker_comment_is_not_hijacked(self):
+        # Critic finding 2: a stranger's comment with our marker must not block our comment.
+        self.gh.comments.append(
+            {'id': 1, 'issue': 7, 'body': MARKER + ' fake', 'user': {'login': 'mallory', 'type': 'User'}}
+        )
+        self.gh.locked.add(1)  # GitHub refuses to edit another user's comment
+        self.run_action('pull_request', self.pr_event(), {'review': FOUND, 'verify': REAL})
+        self.run_action('pull_request', self.pr_event('synchronize'), {'review': FOUND, 'verify': REAL})
+        ours = [c for c in self.review_comments() if c['id'] != 1]
+        self.assertEqual(len(ours), 1)
+        self.assertIn('add subtracts', ours[0]['body'])
+
+    def test_pr_with_a_review_folder_still_gets_reviewed(self):
+        # Critic finding 3: the PR's own .review must not crash the run or feed the model fake inputs.
+        self.write(self.work, '.review/diff.patch', 'FAKE DIFF\n')
+        git(self.work, 'add', '-A')
+        git(self.work, 'commit', '-qm', 'review dir')
+        self.head = git(self.work, 'rev-parse', 'HEAD')
+        git(self.work, 'push', '-q', str(self.bare), 'feature')
+        self.gh.pulls[7] = self.pr()
+        self.run_action('pull_request', self.pr_event(), {'review': FOUND, 'verify': REAL})
+        [c] = self.review_comments()
+        self.assertIn('add subtracts', c['body'])
+        # Ours, not the PR's file. The PR's file still shows up inside it as an added line.
+        diff = self.calls_made()[0]['tree']['.review/diff.patch']
+        self.assertTrue(diff.startswith('diff --git'))
+        self.assertIn('+    return a - b', diff)
+
+    def test_step_cap_with_no_findings_is_not_a_clean_bill(self):
+        # Critic finding 5: the step cap ended the pass with prose; the wrap's empty list is not "clean".
+        plan = {
+            'review': {
+                'run': [[0, STEP], [0, text('I looked at a lot of files.')]],
+                'resume': [[0, text('{"findings": []}')]],
+            }
+        }
+        self.run_action('pull_request', self.pr_event(), plan)
+        [c] = self.review_comments()
+        self.assertNotIn('Nothing blocking', c['body'])
+        self.assertIn('limit', c['body'])
 
     # --- logs -----------------------------------------------------------------------------------
 

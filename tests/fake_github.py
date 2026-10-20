@@ -19,6 +19,7 @@ class FakeGitHub:
         self.replies = []  # review comment replies
         self.reactions = []
         self.writes = []  # (method, path) of every write
+        self.locked = set()  # comment ids this token may not edit (someone else's)
         self.lock = threading.Lock()
         self.next_id = 1000
         self.server = ThreadingHTTPServer(('127.0.0.1', 0), self._handler())
@@ -88,6 +89,8 @@ class FakeGitHub:
                     gh.comments.append({'id': new_id, 'issue': int(m[1]), 'body': body['body'], 'user': bot})
                     return self.send(201, {'id': new_id})
                 if method == 'PATCH' and (m := re.fullmatch(r'/issues/comments/(\d+)', p)):
+                    if int(m[1]) in gh.locked:
+                        return self.send(403, {'message': 'Resource not accessible by integration'})
                     c = next(c for c in gh.comments if c['id'] == int(m[1]))
                     c['body'] = body['body']
                     return self.send(200, {'id': c['id']})

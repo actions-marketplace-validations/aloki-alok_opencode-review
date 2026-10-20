@@ -8,6 +8,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -18,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))  # python -I does not a
 
 import install  # noqa: E402
 import review  # noqa: E402
+import runner  # noqa: E402
 from budget import parse_budget  # noqa: E402
 from diff import build  # noqa: E402
 from github import GitHub, key_status  # noqa: E402
@@ -43,8 +45,20 @@ class Log:
         print(self.mask(str(text)), flush=True)
 
 
+def _cancelled(signum, frame):
+    # GitHub cancels a job with SIGINT then SIGTERM. OpenCode runs in its own process group, so
+    # stop it here or it keeps running, holding the key, on a self-hosted runner.
+    runner.stop_all()
+    sys.exit(0)
+
+
 def main(env):
-    log = Log([env.get('OC_API_KEY'), env.get('OC_GITHUB_TOKEN')])
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        signal.signal(sig, _cancelled)
+    # git sees the token base64-encoded, and a failed git command prints its argv.
+    auth = base64.b64encode(f'x-access-token:{env.get("OC_GITHUB_TOKEN", "")}'.encode()).decode()
+    env = {**env, 'OC_GIT_AUTH': auth}
+    log = Log([env.get('OC_API_KEY'), env.get('OC_GITHUB_TOKEN'), auth])
     try:
         _main(env, log)
     except Exception:  # advisory: a crash must not fail the PR's checks
@@ -54,6 +68,7 @@ def main(env):
 
 def _main(env, log):
     key = env.get('OC_API_KEY', '')
+    print(f'::add-mask::{env["OC_GIT_AUTH"]}', flush=True)
     if key:
         print(f'::add-mask::{key}', flush=True)
     else:
@@ -82,43 +97,63 @@ def _main(env, log):
         pr = gh.pull(job.number)  # a comment reviews the PR as it is now
 
     work = Path(tempfile.mkdtemp(prefix='opencode-review-', dir=env.get('RUNNER_TEMP')))
-    code = work / 'code'
     try:
-        if job.is_pr:
-            head, base = pr['head']['sha'], pr['base']['sha']
-            merge_base = gh.call('GET', f'/compare/{base}...{head}')['merge_base_commit']['sha']
-            _fetch(env, code, [head, base, merge_base], head)
-            review.sanitize(code, base)
-        else:
-            head = merge_base = ''
-            _fetch(env, code, [f'refs/heads/{event["repository"]["default_branch"]}'], 'FETCH_HEAD')
-            review.sanitize(code, None)
-        (code / '.review').mkdir()
-
-        failure = ''
-        try:
-            opencode = env.get('OC_OPENCODE') or install.install(
-                env.get('OC_OPENCODE_VERSION') or DEFAULT_OPENCODE, Path(env['RUNNER_TEMP'], 'opencode-review-bin')
-            )
-            log(f'opencode: {opencode} ({_version(opencode, work)})')
-        except install.InstallError as e:
-            failure = f'could not install OpenCode ({e})'
-            log(failure)
-        failure = failure or _key_failure(env, log, key)
-        model = review.Model(
-            opencode if not failure else '',
-            env['OC_MODEL'],
-            key,
-            float(env.get('OC_TURN_P90') or 14),
-            int(env.get('OC_WRAP_SECONDS') or 30),
-        )
-        ctx = dict(env=env, log=log, gh=gh, job=job, code=code, work=work, model=model)
-        if job.mode == 'review':
-            _review(ctx, pr, head, base, merge_base, failure)
-        else:
-            _ask(ctx, pr, merge_base, head, failure)
+        _run_job(env, log, gh, job, event, pr, key, work)
+    except Exception:
+        # Say so on the PR: silence would leave an older "Nothing blocking" standing.
+        log(traceback.format_exc())
+        _post_failure(log, gh, job, pr, 'something went wrong, see the job log')
     finally:
         shutil.rmtree(work, ignore_errors=True)
+
+
+def _post_failure(log, gh, job, pr, reason):
+    try:
+        if job.mode == 'review':
+            gh.upsert_comment(
+                job.number, MARKER, render(Outcome(pr['head']['sha'], 'failed', None, 'skipped', None, 5, reason))
+            )
+        else:
+            gh.reply(job.number, job.comment_id, job.comment_kind, _answer_body(f'I could not answer: {reason}.'))
+    except Exception:
+        log(traceback.format_exc())
+
+
+def _run_job(env, log, gh, job, event, pr, key, work):
+    code = work / 'code'
+    if job.is_pr:
+        head, base = pr['head']['sha'], pr['base']['sha']
+        merge_base = gh.call('GET', f'/compare/{base}...{head}')['merge_base_commit']['sha']
+        _fetch(env, code, [head, base, merge_base], head)
+        review.sanitize(code, base)
+    else:
+        head = base = merge_base = ''
+        _fetch(env, code, [f'refs/heads/{event["repository"]["default_branch"]}'], 'FETCH_HEAD')
+        review.sanitize(code, None)
+    (code / '.review').mkdir()
+
+    failure = ''
+    try:
+        opencode = env.get('OC_OPENCODE') or install.install(
+            env.get('OC_OPENCODE_VERSION') or DEFAULT_OPENCODE, Path(env['RUNNER_TEMP'], 'opencode-review-bin')
+        )
+        log(f'opencode: {opencode} ({_version(opencode, work)})')
+    except install.InstallError as e:
+        failure = f'could not install OpenCode ({e})'
+        log(failure)
+    failure = failure or _key_failure(env, log, key)
+    model = review.Model(
+        opencode if not failure else '',
+        env['OC_MODEL'],
+        key,
+        float(env.get('OC_TURN_P90') or 14),
+        int(env.get('OC_WRAP_SECONDS') or 30),
+    )
+    ctx = dict(env=env, log=log, gh=gh, job=job, code=code, work=work, model=model)
+    if job.mode == 'review':
+        _review(ctx, pr, head, base, merge_base, failure)
+    else:
+        _ask(ctx, pr, merge_base, head, failure)
 
 
 def _skip(env, log, reason):
@@ -130,7 +165,7 @@ def _fetch(env, code, refs, checkout):
     """Depth-1 fetch of exactly the commits needed. The token goes in per command, never into
     .git/config, because the model can read every file in the checkout."""
     url = f'{env.get("GITHUB_SERVER_URL", "https://github.com")}/{env["GITHUB_REPOSITORY"]}.git'
-    auth = base64.b64encode(f'x-access-token:{env["OC_GITHUB_TOKEN"]}'.encode()).decode()
+    auth = env['OC_GIT_AUTH']
     code.mkdir(parents=True)
     review.git(code, 'init', '-q')
     subprocess.run(
@@ -233,9 +268,12 @@ def _ask(ctx, pr, merge_base, head, failure):
         r = review.one_pass(ctx['model'], code, ctx['work'], 'ask', review.prompt('ask.md', budget.turns), budget, None)
         log(f'ask pass: {r.status}, {r.turns} turns, {r.seconds} s')
         answer = r.answer or 'I could not finish an answer in time. Try a narrower question.'
-    body = f'{ANSWER_MARKER}\n{log.mask(answer)}\n\n<sub>OpenCode answer, read-only, advisory.</sub>'
-    gh.reply(job.number, job.comment_id, job.comment_kind, body)
+    gh.reply(job.number, job.comment_id, job.comment_kind, _answer_body(log.mask(answer)))
     _summary(env, f'opencode-review: answered on #{job.number}, model {env["OC_MODEL"]}')
+
+
+def _answer_body(answer):
+    return f'{ANSWER_MARKER}\n{answer}\n\n<sub>OpenCode answer, read-only, advisory.</sub>'
 
 
 def _summary(env, text):

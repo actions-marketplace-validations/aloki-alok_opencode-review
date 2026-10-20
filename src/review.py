@@ -16,8 +16,9 @@ from runner import Pass, Result, run_pass
 
 PROMPTS = Path(__file__).resolve().parent.parent / 'prompts'
 VERIFY_SECONDS = 120
-# Files in a PR that would change how OpenCode itself runs: config, agents, plugins (code).
-OPENCODE_FILES = ('opencode.json', 'opencode.jsonc', '.opencode')
+# Paths in a PR that would change how OpenCode runs (config, agents, plugin code), or would pose as
+# the inputs the action writes to .review/.
+PR_PATHS = ('opencode.json', 'opencode.jsonc', '.opencode', '.review')
 # Instruction files OpenCode loads on its own: taken from the base, so a PR can't rewrite its review.
 RULE_FILES = ('AGENTS.md', 'CLAUDE.md')
 
@@ -47,7 +48,7 @@ def git(cwd, *args):
 def sanitize(code, base):
     """Make the checkout safe to hand to OpenCode. `base` is None when the checkout is trusted."""
     _drop_outside_links(Path(code))
-    for name in OPENCODE_FILES:
+    for name in PR_PATHS:
         p = Path(code, name)
         if p.is_dir():
             shutil.rmtree(p)

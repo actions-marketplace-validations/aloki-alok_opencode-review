@@ -14,12 +14,16 @@ import json
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'src'))
+
+from render import kept_findings  # noqa: E402
+
 NEAR = 15
 
 
 def kept(r):
-    verdicts = {v.get('index'): v.get('verdict') for v in (r.get('verdicts') or [])}
-    return [f for i, f in enumerate(r.get('findings') or []) if verdicts.get(i) != 'refuted']
+    # The same rule the comment uses, so the bench scores what users see.
+    return kept_findings(r.get('findings') or [], r.get('verdicts') if r.get('verify', 'done') == 'done' else None)
 
 
 def hit(finding, fix_lines):

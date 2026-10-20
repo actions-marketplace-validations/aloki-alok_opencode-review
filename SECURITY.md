@@ -3,8 +3,9 @@
 ## What protects you
 
 - **The model only reads.** OpenCode runs with every tool denied except read, glob, grep and list.
-  Reads outside the checkout and of `.env` files are denied. There is no shell, no edit, no web and
-  no sub-agent.
+  Reads outside the checkout are denied, and so are symlinks that lead out of it. Opening `.env`
+  files is denied, though a search can still match lines in a committed one. There is no shell, no
+  edit, no web and no sub-agent.
 - **The PR can't change the reviewer.** The action's code and prompts come from the action's pinned
   ref. The repo guide, `AGENTS.md` and `CLAUDE.md` come from the base branch. The PR's
   `opencode.json` and `.opencode/` folder (config, agents, plugin code) are removed before OpenCode
@@ -14,7 +15,8 @@
   the checkout's `.git` folder. Logs mask the key.
 - **Only members trigger it.** Comment commands need an allowed author association. Bot comments,
   drafts, Dependabot PRs and fork PRs are skipped, including comments on fork PRs.
-- **Fresh state per job.** Each job gets its own home and config folders, removed when it ends.
+- **Fresh state per job.** Each job gets its own home and config folders, removed when it ends. A
+  cancelled job stops OpenCode too.
 
 ## What leaves your runner
 

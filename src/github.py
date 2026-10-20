@@ -39,12 +39,16 @@ class GitHub:
             page += 1
 
     def upsert_comment(self, number, marker, body):
-        """One comment per PR, found by its marker and edited in place."""
-        mine = next((c for c in self.comments(number) if c['body'].startswith(marker)), None)
-        if mine:
-            self.call('PATCH', f'/issues/comments/{mine["id"]}', {'body': body})
-        else:
-            self.call('POST', f'/issues/{number}/comments', {'body': body})
+        """One comment per PR, found by its marker and edited in place. Anyone can post the marker, so a
+        comment this token may not edit is passed over instead of blocking the review."""
+        for c in [c for c in self.comments(number) if c['body'].startswith(marker)]:
+            try:
+                self.call('PATCH', f'/issues/comments/{c["id"]}', {'body': body})
+                return
+            except urllib.error.HTTPError as e:
+                if e.code not in (403, 404):
+                    raise
+        self.call('POST', f'/issues/{number}/comments', {'body': body})
 
     def react(self, comment_id, kind, content='eyes'):
         self.call(

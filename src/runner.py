@@ -13,6 +13,7 @@ from pathlib import Path
 from extract import error_message, find_json, last_text, session_id, turns
 
 KILL_GRACE = 5  # seconds between SIGINT and SIGKILL
+LIVE = set()  # running OpenCode processes: their own process groups, so a cancel must reach them
 KEY_VAR = 'OPENCODE_REVIEW_API_KEY'
 # Proxy and CA settings so self-hosted runners behind a proxy still reach the provider.
 PASS_ENV = (
@@ -53,7 +54,7 @@ class Pass:
 
 @dataclass
 class Result:
-    status: str  # done | timeout | failed
+    status: str  # done | timeout | limit (the turn cap ended it) | failed
     result: dict | None = None
     answer: str = ''
     turns: int = 0
@@ -109,9 +110,6 @@ def env(p):
         OPENCODE_CONFIG_CONTENT=json.dumps(config(p)),
     )
     e[KEY_VAR] = p.api_key
-    for k, v in os.environ.items():
-        if k.startswith('OPENCODE_FAKE_'):  # test double controls
-            e[k] = v
     for d in ('home', 'config', 'data', 'cache', 'state'):
         (home / d).mkdir(parents=True, exist_ok=True)
     return e
@@ -129,6 +127,7 @@ def _run(p, args, seconds, log_path):
             stdin=subprocess.DEVNULL,
             start_new_session=True,
         )
+        LIVE.add(proc)
         try:
             proc.wait(timeout=seconds)
             return False
@@ -140,6 +139,14 @@ def _run(p, args, seconds, log_path):
                 _signal(proc, signal.SIGKILL)
                 proc.wait()
             return True
+        finally:
+            LIVE.discard(proc)
+
+
+def stop_all():
+    """Kill every running OpenCode. The job is being cancelled, so there is nothing to salvage."""
+    for proc in list(LIVE):
+        _signal(proc, signal.SIGKILL)
 
 
 def _signal(proc, sig):
@@ -161,12 +168,13 @@ def run_pass(p):
         return find_json(log, p.json_key) is not None if p.json_key else bool(last_text(log))
 
     # Out of time, or the step cap ended it with prose: ask the same session for the answer.
-    if sid and (timed_out or not done()):
+    wrapped = bool(sid) and (timed_out or not done())
+    if wrapped:
         wrap_path = Path(p.work) / f'{p.agent}-wrap.log'
         _run(p, ['--session', sid, '--agent', 'wrap', WRAP[bool(p.json_key)]], p.wrap_seconds, wrap_path)
         log += '\n' + wrap_path.read_text(errors='replace')
 
-    status = 'timeout' if timed_out else 'done' if sid else 'failed'
+    status = 'timeout' if timed_out else 'limit' if wrapped else 'done' if sid else 'failed'
     r = Result(status, turns=n, seconds=round(time.monotonic() - start, 1))
     if p.json_key:
         r.result = find_json(log, p.json_key)
@@ -174,6 +182,6 @@ def run_pass(p):
         r.answer = last_text(log)
     if r.result is None and not r.answer:
         r.error = error_message(log)
-        if status == 'done' and r.error:
-            r.status = 'failed'
+        if r.error and not timed_out:
+            r.status = 'failed'  # OpenCode reported an error and gave nothing back
     return r
