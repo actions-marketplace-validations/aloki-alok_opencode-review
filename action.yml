@@ -1,0 +1,69 @@
+name: OpenCode review
+description: Read-only AI review of pull requests, and answers to /oc questions, run by OpenCode in your own Actions.
+author: Alok
+branding:
+  icon: eye
+  color: gray-dark
+
+inputs:
+  model:
+    description: OpenCode model, as provider/model. Example openrouter/deepseek/deepseek-v4.1-flash.
+    required: true
+  api-key:
+    description: API key for the model's provider. Pass a secret.
+    required: true
+  github-token:
+    description: Token used to read the PR and post comments. Needs contents read, pull-requests and issues write.
+    default: ${{ github.token }}
+  trigger:
+    description: Word that starts a comment command.
+    default: /oc
+  guide-path:
+    description: Repo guide added to every prompt. Read from the PR's base branch.
+    default: .github/opencode-review/guide.md
+  max-findings:
+    description: Most findings shown in the review comment.
+    default: '5'
+  review-budget:
+    description: auto (sized to the change), or turns:seconds for the find pass.
+    default: auto
+  ask-budget:
+    description: turns:seconds for answering a question.
+    default: '16:240'
+  turn-p90:
+    description: Seconds a model turn takes at p90. Sets how many turns fit the time budget.
+    default: '14'
+  allowed-associations:
+    description: Who may use comment commands, as GitHub author associations.
+    default: OWNER,MEMBER,COLLABORATOR
+  allow-public-self-hosted:
+    description: Run on a public repo with a self-hosted runner. Unsafe. See SECURITY.md.
+    default: 'false'
+  opencode-version:
+    description: OpenCode version to install.
+    default: 1.19.3
+  opencode-path:
+    description: Path to an installed opencode binary. Skips the install.
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: OpenCode review
+      shell: bash
+      # Inputs reach the script as env only, never interpolated into it, so a comment can't inject shell.
+      run: python3 -I "$GITHUB_ACTION_PATH/src/main.py"
+      env:
+        OC_MODEL: ${{ inputs.model }}
+        OC_API_KEY: ${{ inputs.api-key }}
+        OC_GITHUB_TOKEN: ${{ inputs.github-token }}
+        OC_TRIGGER: ${{ inputs.trigger }}
+        OC_GUIDE_PATH: ${{ inputs.guide-path }}
+        OC_MAX_FINDINGS: ${{ inputs.max-findings }}
+        OC_REVIEW_BUDGET: ${{ inputs.review-budget }}
+        OC_ASK_BUDGET: ${{ inputs.ask-budget }}
+        OC_TURN_P90: ${{ inputs.turn-p90 }}
+        OC_ASSOCIATIONS: ${{ inputs.allowed-associations }}
+        OC_ALLOW_PUBLIC_SELF_HOSTED: ${{ inputs.allow-public-self-hosted }}
+        OC_OPENCODE_VERSION: ${{ inputs.opencode-version }}
+        OC_OPENCODE: ${{ inputs.opencode-path }}

@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.9', '3.13']
+    steps:
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Unit and end-to-end tests (fake GitHub, fake OpenCode)
+        working-directory: tests
+        run: python -m unittest -v
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        with:
+          persist-credentials: false
+      - name: Lint workflows and the action
+        run: |
+          # The template's placeholder pin would fail the pin check: lint it with a real-looking SHA.
+          sed 's/COMMIT_SHA/0123456789abcdef0123456789abcdef01234567/' templates/workflow.yml > /tmp/workflow.yml
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.7/scripts/download-actionlint.bash) 1.7.7
+          ./actionlint .github/workflows/*.yml /tmp/workflow.yml
+          pipx run zizmor==1.31.1 --offline action.yml .github/workflows /tmp/workflow.yml
