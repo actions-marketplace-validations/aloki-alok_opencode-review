@@ -46,7 +46,7 @@ concurrency:
 
 jobs:
   opencode:
-    if: github.event_name == 'pull_request' || startsWith(github.event.comment.body, '/oc ')
+    if: github.event_name == 'pull_request' || startsWith(github.event.comment.body, '/oc')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
