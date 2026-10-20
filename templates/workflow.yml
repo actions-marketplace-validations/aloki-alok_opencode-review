@@ -26,7 +26,7 @@ concurrency:
 jobs:
   opencode:
     # Only commands take a runner. The action checks every gate again.
-    if: github.event_name == 'pull_request' || startsWith(github.event.comment.body, '/oc')
+    if: github.event_name == 'pull_request' || startsWith(github.event.comment.body, '/oc ')
     runs-on: ubuntu-latest # or a dedicated self-hosted label, so reviews don't queue behind builds
     timeout-minutes: 10
     permissions:

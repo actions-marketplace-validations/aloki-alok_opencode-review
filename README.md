@@ -1,4 +1,4 @@
-# OpenCode review :)
+# OpenCode code review :)
 
 [![GitHub Marketplace](https://img.shields.io/badge/Marketplace-OpenCode%20code%20review-blue?logo=github)](https://github.com/marketplace/actions/opencode-code-review)
 
@@ -46,7 +46,7 @@ concurrency:
 
 jobs:
   opencode:
-    if: github.event_name == 'pull_request' || startsWith(github.event.comment.body, '/oc')
+    if: github.event_name == 'pull_request' || startsWith(github.event.comment.body, '/oc ')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -61,6 +61,12 @@ jobs:
 ```
 
 That's it. Open a PR and a review appears in a few minutes. :D
+
+Two things to know:
+- `/oc` commands start working once this file is on your default branch. GitHub runs comment
+  triggers from there only. PR reviews work from the PR that adds the file.
+- If your organization limits which actions may run (Settings, Actions, General), allow
+  `aloki-alok/opencode-review@*`.
 
 The same file lives in [`templates/workflow.yml`](templates/workflow.yml) with a comment on every
 line. For the strongest supply-chain safety, pin `@v0` to a full commit SHA and let Dependabot
@@ -80,6 +86,7 @@ from the base branch, so a PR can't rewrite the rules for its own review.
 | `Changes needed: 2 things. :/` | Defects found and double-checked. Each one names the file, the line and a fix. |
 | `Nothing blocking found. :)` | The review finished and found nothing worth blocking on. |
 | `... Stopped at the time limit, so it may have missed things.` | It ran out of time but kept what it found. |
+| `... Stopped at the turn limit, so it may have missed things.` | It used all its turns but kept what it found. |
 | `Review did not finish ... -_-` | It ran out of time with nothing to show. Comment `/oc review` to retry. |
 | `Review failed for ...: <reason>. :(` | Something is set up wrong, for example a dead API key. The reason says what. |
 
