@@ -46,6 +46,16 @@ def turns(log):
     return sum(e.get('type') == 'step_finish' for e in _events(log))
 
 
+def error_message(log):
+    """The last error OpenCode reported, for the job log and the failure comment."""
+    msg = ''
+    for e in _events(log):
+        if e.get('type') == 'error':
+            err = e.get('error') or {}
+            msg = str((err.get('data') or {}).get('message') or err.get('name') or 'unknown error')
+    return msg
+
+
 def last_text(log):
     texts = [t.strip() for t in _texts(log) if t.strip()]
     return texts[-1] if texts else ''
