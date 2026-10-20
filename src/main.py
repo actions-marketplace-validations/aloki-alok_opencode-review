@@ -139,7 +139,7 @@ def _run_job(env, log, gh, job, event, pr, key, work):
         )
         log(f'opencode: {opencode} ({_version(opencode, work)})')
     except install.InstallError as e:
-        failure = f'could not install OpenCode ({e})'
+        failure = log.mask(f'could not install OpenCode ({e})')
         log(failure)
     failure = failure or _key_failure(env, log, key)
     model = review.Model(

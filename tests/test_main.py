@@ -8,6 +8,7 @@ import contextlib
 import io
 import json
 import os
+import signal
 import subprocess
 import tempfile
 import unittest
@@ -167,10 +168,14 @@ class ActionTest(unittest.TestCase):
         # In the action every input is in the process env too: OpenCode must still not get the token.
         saved = {k: os.environ.get(k) for k in env}
         os.environ.update(env)
+        handlers = {s: signal.getsignal(s) for s in (signal.SIGINT, signal.SIGTERM)}
         try:
             with contextlib.redirect_stdout(out):
                 code = main.main(env)
+            self.handlers = {s: signal.getsignal(s) for s in handlers}
         finally:
+            for s, h in handlers.items():
+                signal.signal(s, h)
             for k, v in saved.items():
                 if v is None:
                     os.environ.pop(k, None)
@@ -354,8 +359,14 @@ class ActionTest(unittest.TestCase):
         self.assertIn('GUIDE FROM BASE', prompt)
         self.assertNotIn('GUIDE FROM PR', prompt)
 
+    def test_cancel_signals_stop_opencode(self):
+        # GitHub cancels with SIGINT then SIGTERM. Both must reach the handler that kills OpenCode.
+        self.run_action('pull_request', self.pr_event(), {'review': {'run': [[0, text('{"findings": []}')]]}})
+        self.assertEqual(set(self.handlers.values()), {main._cancelled})
+
     def test_question_on_issue_gets_the_default_branch_guide(self):
-        self.run_action('issue_comment', self.comment_event('/oc hi', number=8, on_pr=False), {'ask': {'run': [[0, text('ok')]]}})
+        event = self.comment_event('/oc hi', number=8, on_pr=False)
+        self.run_action('issue_comment', event, {'ask': {'run': [[0, text('ok')]]}})
         self.assertIn('GUIDE FROM BASE', self.calls_made()[0]['argv'][-1])
 
     def test_question_on_issue_reads_default_branch(self):
@@ -481,10 +492,10 @@ class ActionTest(unittest.TestCase):
                 'resume': [[0, text('{"findings": []}')]],
             }
         }
-        self.run_action('pull_request', self.pr_event(), plan)
+        self.run_action('pull_request', self.pr_event(), plan, review_budget='1:30')
         [c] = self.review_comments()
         self.assertNotIn('Nothing blocking', c['body'])
-        self.assertIn('limit', c['body'])
+        self.assertIn('turn limit', c['body'])
 
     # --- logs -----------------------------------------------------------------------------------
 
