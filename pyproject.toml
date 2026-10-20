@@ -1,0 +1,12 @@
+[tool.ruff]
+line-length = 120
+src = ['src', 'tests', 'bench']
+
+[tool.ruff.format]
+quote-style = 'single'
+
+[tool.ruff.lint]
+select = ['E', 'F', 'B', 'I']
+
+[tool.ruff.lint.isort]
+known-first-party = ['budget', 'diff', 'extract', 'github', 'install', 'main', 'render', 'review', 'route', 'runner', 'helpers', 'fake_github', 'test_main']

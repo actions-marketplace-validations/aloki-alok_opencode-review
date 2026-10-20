@@ -1,4 +1,9 @@
 """End to end: the action's entry point against a fake GitHub API, a real git remote and a fake OpenCode."""
+
+from helpers import ROOT, src  # noqa: F401  (puts src/ on the path)
+
+# isort: split
+
 import contextlib
 import io
 import json
@@ -8,9 +13,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from helpers import ROOT, src  # noqa: F401
-from fake_github import FakeGitHub
 import main
+from fake_github import FakeGitHub
 from render import MARKER
 
 REPO = 'acme/app'
@@ -88,14 +92,24 @@ class ActionTest(unittest.TestCase):
         p.write_text(body)
 
     def pr(self, **kw):
-        return {'number': 7, 'draft': False, 'title': 'Fix add', 'body': 'Makes add correct.',
-                'user': {'login': 'alice', 'type': 'User'},
-                'head': {'sha': self.head, 'repo': {'full_name': REPO}},
-                'base': {'sha': self.base, 'ref': 'main'}, **kw}
+        return {
+            'number': 7,
+            'draft': False,
+            'title': 'Fix add',
+            'body': 'Makes add correct.',
+            'user': {'login': 'alice', 'type': 'User'},
+            'head': {'sha': self.head, 'repo': {'full_name': REPO}},
+            'base': {'sha': self.base, 'ref': 'main'},
+            **kw,
+        }
 
     def pr_event(self, action='opened', **kw):
-        return {'action': action, 'pull_request': self.pr(**kw), 'repository': self.repo(),
-                'sender': {'login': 'alice', 'type': 'User'}}
+        return {
+            'action': action,
+            'pull_request': self.pr(**kw),
+            'repository': self.repo(),
+            'sender': {'login': 'alice', 'type': 'User'},
+        }
 
     def repo(self):
         return {'full_name': REPO, 'private': True, 'default_branch': 'main'}
@@ -104,9 +118,17 @@ class ActionTest(unittest.TestCase):
         issue = dict(self.gh.issues[number])
         if not on_pr:
             issue.pop('pull_request', None)
-        return {'action': 'created', 'issue': issue, 'repository': self.repo(),
-                'comment': {'id': 555, 'body': body, 'author_association': association,
-                            'user': {'login': 'bob', 'type': 'User'}}}
+        return {
+            'action': 'created',
+            'issue': issue,
+            'repository': self.repo(),
+            'comment': {
+                'id': 555,
+                'body': body,
+                'author_association': association,
+                'user': {'login': 'bob', 'type': 'User'},
+            },
+        }
 
     def run_action(self, event_name, event, plan, key=KEY, **inputs):
         p = self.dir / f'plan-{len(list(self.dir.glob("plan-*")))}.json'
@@ -116,15 +138,28 @@ class ActionTest(unittest.TestCase):
         ev.write_text(json.dumps(event))
         summary = self.dir / 'summary.md'
         env = {
-            'GITHUB_EVENT_NAME': event_name, 'GITHUB_EVENT_PATH': str(ev), 'GITHUB_REPOSITORY': REPO,
-            'GITHUB_API_URL': self.gh.url, 'GITHUB_SERVER_URL': self.server.as_uri(),
-            'RUNNER_TEMP': str(self.dir / 'runner-temp'), 'RUNNER_ENVIRONMENT': 'self-hosted',
+            'GITHUB_EVENT_NAME': event_name,
+            'GITHUB_EVENT_PATH': str(ev),
+            'GITHUB_REPOSITORY': REPO,
+            'GITHUB_API_URL': self.gh.url,
+            'GITHUB_SERVER_URL': self.server.as_uri(),
+            'RUNNER_TEMP': str(self.dir / 'runner-temp'),
+            'RUNNER_ENVIRONMENT': 'self-hosted',
             'GITHUB_STEP_SUMMARY': str(summary),
-            'OC_MODEL': 'openrouter/some/model', 'OC_API_KEY': key, 'OC_GITHUB_TOKEN': 'ghs_token',
-            'OC_OPENCODE': FAKE, 'OC_KEY_CHECK_URL': f'{self.gh.url}/openrouter/key',
-            'OC_TRIGGER': '/oc', 'OC_GUIDE_PATH': '.github/opencode-review/guide.md', 'OC_MAX_FINDINGS': '5',
-            'OC_REVIEW_BUDGET': 'auto', 'OC_ASK_BUDGET': '6:5', 'OC_ASSOCIATIONS': 'OWNER,MEMBER,COLLABORATOR',
-            'OC_ALLOW_PUBLIC_SELF_HOSTED': 'false', 'OC_TURN_P90': '14', 'OC_WRAP_SECONDS': '3',
+            'OC_MODEL': 'openrouter/some/model',
+            'OC_API_KEY': key,
+            'OC_GITHUB_TOKEN': 'ghs_token',
+            'OC_OPENCODE': FAKE,
+            'OC_KEY_CHECK_URL': f'{self.gh.url}/openrouter/key',
+            'OC_TRIGGER': '/oc',
+            'OC_GUIDE_PATH': '.github/opencode-review/guide.md',
+            'OC_MAX_FINDINGS': '5',
+            'OC_REVIEW_BUDGET': 'auto',
+            'OC_ASK_BUDGET': '6:5',
+            'OC_ASSOCIATIONS': 'OWNER,MEMBER,COLLABORATOR',
+            'OC_ALLOW_PUBLIC_SELF_HOSTED': 'false',
+            'OC_TURN_P90': '14',
+            'OC_WRAP_SECONDS': '3',
         }
         env.update({f'OC_{k.upper()}': v for k, v in inputs.items()})
         (self.dir / 'runner-temp').mkdir(exist_ok=True)
@@ -156,7 +191,9 @@ class ActionTest(unittest.TestCase):
     def test_push_edits_the_same_comment(self):
         # Row 7: every push edits one comment instead of adding one.
         self.run_action('pull_request', self.pr_event(), {'review': FOUND, 'verify': REAL})
-        self.run_action('pull_request', self.pr_event('synchronize'), {'review': {'run': [[0, text('{"findings": []}')]]}})
+        self.run_action(
+            'pull_request', self.pr_event('synchronize'), {'review': {'run': [[0, text('{"findings": []}')]]}}
+        )
         [c] = self.review_comments()
         self.assertIn('Nothing blocking found.', c['body'])
 
@@ -175,6 +212,7 @@ class ActionTest(unittest.TestCase):
         # Row 14: a runner OpenCode can't be installed on gets a clear reason, not silence.
         def broken(version, dest):
             raise main.install.InstallError('no OpenCode build for Windows AMD64. Set the opencode-path input.')
+
         real, main.install.install = main.install.install, broken
         try:
             self.run_action('pull_request', self.pr_event(), {'review': FOUND}, opencode='')
@@ -186,7 +224,9 @@ class ActionTest(unittest.TestCase):
         self.assertEqual(self.calls_made(), [])
 
     def test_model_error_fails_loudly(self):
-        plan = {'review': {'run': [[0, {'type': 'error', 'error': {'data': {'message': 'model not found'}}}]], 'exit': 1}}
+        plan = {
+            'review': {'run': [[0, {'type': 'error', 'error': {'data': {'message': 'model not found'}}}]], 'exit': 1}
+        }
         self.run_action('pull_request', self.pr_event(), plan)
         [c] = self.review_comments()
         self.assertIn('Review failed', c['body'])
@@ -194,9 +234,13 @@ class ActionTest(unittest.TestCase):
 
     def test_timeout_keeps_the_salvaged_finding(self):
         # Row 3: the time cap no longer throws the work away.
-        plan = {'review': {'run': [[0, STEP], [30, text('late')]],
-                           'resume': [[0, text(json.dumps({'findings': [FINDING]}))]]},
-                'verify': REAL}
+        plan = {
+            'review': {
+                'run': [[0, STEP], [30, text('late')]],
+                'resume': [[0, text(json.dumps({'findings': [FINDING]}))]],
+            },
+            'verify': REAL,
+        }
         self.run_action('pull_request', self.pr_event(), plan, review_budget='5:1')
         [c] = self.review_comments()
         self.assertIn('add subtracts', c['body'])
@@ -295,8 +339,12 @@ class ActionTest(unittest.TestCase):
         self.assertEqual(call['tree']['app/calc.py'], 'def add(a, b):\n    return a + b\n')
 
     def test_question_that_runs_out_of_time_says_what_it_checked(self):
-        plan = {'ask': {'run': [[0, STEP], [30, text('late')]],
-                        'resume': [[0, text('I checked app/calc.py. Still unknown: callers.')]]}}
+        plan = {
+            'ask': {
+                'run': [[0, STEP], [30, text('late')]],
+                'resume': [[0, text('I checked app/calc.py. Still unknown: callers.')]],
+            }
+        }
         self.run_action('issue_comment', self.comment_event('/oc who calls add?'), plan, ask_budget='5:1')
         [a] = [c for c in self.gh.comments_on(7) if not c['body'].startswith(MARKER)]
         self.assertIn('I checked app/calc.py.', a['body'])
@@ -355,8 +403,12 @@ class ActionTest(unittest.TestCase):
 
     def test_key_never_reaches_the_log(self):
         # Row 23: even when OpenCode echoes it back in an error.
-        plan = {'review': {'run': [[0, {'type': 'error', 'error': {'data': {'message': f'bad header Bearer {KEY}'}}}]],
-                           'exit': 1}}
+        plan = {
+            'review': {
+                'run': [[0, {'type': 'error', 'error': {'data': {'message': f'bad header Bearer {KEY}'}}}]],
+                'exit': 1,
+            }
+        }
         log = self.run_action('pull_request', self.pr_event(), plan)
         self.assertIn(f'::add-mask::{KEY}', log)  # GitHub runs this line, never prints it
         self.assertNotIn(KEY, log.replace(f'::add-mask::{KEY}', ''))

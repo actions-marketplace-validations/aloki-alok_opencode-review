@@ -1,6 +1,9 @@
+from helpers import src  # noqa: F401  (puts src/ on the path)
+
+# isort: split
+
 import unittest
 
-from helpers import src  # noqa: F401
 from render import MARKER, Outcome, render
 
 SHA = '0123456789abcdef'
@@ -63,8 +66,11 @@ class RenderTest(unittest.TestCase):
             self.assertIn('Second check did not finish.', body)
 
     def test_caps_at_max_findings(self):
-        body = render(Outcome(sha=SHA, find='done', findings=[f(i) for i in range(9)],
-                              verify='timeout', verdicts=None, max_findings=5))
+        body = render(
+            Outcome(
+                sha=SHA, find='done', findings=[f(i) for i in range(9)], verify='timeout', verdicts=None, max_findings=5
+            )
+        )
         self.assertIn('Changes needed: 5 things.', body)
         self.assertIn('Bug number 4', body)
         self.assertNotIn('Bug number 5', body)
@@ -85,14 +91,19 @@ class RenderTest(unittest.TestCase):
 
     def test_snapshot(self):
         v = [{'index': 0, 'verdict': 'real'}]
-        self.assertEqual(out(findings=[f(1)], verify='done', verdicts=v), '\n'.join([
-            MARKER,
-            'Changes needed: 1 thing.',
-            '',
-            '1. Bug number 1 (`src/m1.py:1`). Do thing 1.',
-            '',
-            '<sub>OpenCode review of 012345678, advisory. Reply if a finding is wrong.</sub>',
-        ]))
+        self.assertEqual(
+            out(findings=[f(1)], verify='done', verdicts=v),
+            '\n'.join(
+                [
+                    MARKER,
+                    'Changes needed: 1 thing.',
+                    '',
+                    '1. Bug number 1 (`src/m1.py:1`). Do thing 1.',
+                    '',
+                    '<sub>OpenCode review of 012345678, advisory. Reply if a finding is wrong.</sub>',
+                ]
+            ),
+        )
 
 
 if __name__ == '__main__':

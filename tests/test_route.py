@@ -1,15 +1,22 @@
+from helpers import src  # noqa: F401  (puts src/ on the path)
+
+# isort: split
+
 import unittest
 
-from helpers import src  # noqa: F401
 from route import Settings, route
 
 REPO = 'acme/app'
 
 
 def pr(number=7, draft=False, head_repo=REPO, user='alice'):
-    return {'number': number, 'draft': draft, 'user': {'login': user, 'type': 'User'},
-            'head': {'sha': 'h' * 40, 'repo': {'full_name': head_repo} if head_repo else None},
-            'base': {'sha': 'b' * 40, 'ref': 'main'}}
+    return {
+        'number': number,
+        'draft': draft,
+        'user': {'login': user, 'type': 'User'},
+        'head': {'sha': 'h' * 40, 'repo': {'full_name': head_repo} if head_repo else None},
+        'base': {'sha': 'b' * 40, 'ref': 'main'},
+    }
 
 
 def repo(private=True):
@@ -17,17 +24,29 @@ def repo(private=True):
 
 
 def pr_event(action='opened', **kw):
-    return {'action': action, 'pull_request': pr(**kw), 'repository': repo(),
-            'sender': {'login': kw.get('user', 'alice'), 'type': 'User'}}
+    return {
+        'action': action,
+        'pull_request': pr(**kw),
+        'repository': repo(),
+        'sender': {'login': kw.get('user', 'alice'), 'type': 'User'},
+    }
 
 
 def comment(body, association='MEMBER', user_type='User', on_pr=True):
     issue = {'number': 7, 'title': 't', 'body': ''}
     if on_pr:
         issue['pull_request'] = {'url': 'x'}
-    return {'action': 'created', 'issue': issue, 'repository': repo(),
-            'comment': {'id': 99, 'body': body, 'author_association': association,
-                        'user': {'login': 'bob', 'type': user_type}}}
+    return {
+        'action': 'created',
+        'issue': issue,
+        'repository': repo(),
+        'comment': {
+            'id': 99,
+            'body': body,
+            'author_association': association,
+            'user': {'login': 'bob', 'type': user_type},
+        },
+    }
 
 
 S = Settings()

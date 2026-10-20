@@ -1,7 +1,10 @@
+from helpers import src  # noqa: F401  (puts src/ on the path)
+
+# isort: split
+
 import json
 import unittest
 
-from helpers import src  # noqa: F401
 from extract import find_json, last_text, session_id, turns
 
 
@@ -18,8 +21,14 @@ FINDING = {'file': 'a.py', 'line': 3, 'title': 'x'}
 
 class ExtractTest(unittest.TestCase):
     def test_json_at_the_end(self):
-        log = '\n'.join([ev('step_start'), text('I read a.py.'), ev('step_finish'),
-                         text('{"findings": [%s]}' % json.dumps(FINDING))])
+        log = '\n'.join(
+            [
+                ev('step_start'),
+                text('I read a.py.'),
+                ev('step_finish'),
+                text('{"findings": [%s]}' % json.dumps(FINDING)),
+            ]
+        )
         self.assertEqual(find_json(log, 'findings'), {'findings': [FINDING]})
 
     def test_json_in_a_code_fence(self):
@@ -56,8 +65,17 @@ class ExtractTest(unittest.TestCase):
         self.assertIsNone(find_json(text('{"findings": "none"}'), 'findings'))
 
     def test_session_turns_and_last_text(self):
-        log = '\n'.join([ev('step_start'), text('first'), ev('step_finish'),
-                         ev('step_start'), text('  second  '), ev('step_finish'), 'not json'])
+        log = '\n'.join(
+            [
+                ev('step_start'),
+                text('first'),
+                ev('step_finish'),
+                ev('step_start'),
+                text('  second  '),
+                ev('step_finish'),
+                'not json',
+            ]
+        )
         self.assertEqual(session_id(log), 'ses_abc')
         self.assertEqual(turns(log), 2)
         self.assertEqual(last_text(log), 'second')

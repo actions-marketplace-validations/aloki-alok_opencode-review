@@ -1,4 +1,5 @@
 """In-memory GitHub REST API: just the routes the action uses, plus the OpenRouter key check."""
+
 import json
 import re
 import subprocess
@@ -53,27 +54,30 @@ class FakeGitHub:
                 u = urlparse(self.path)
                 if u.path == '/openrouter/key':
                     ok = self.headers.get('Authorization') == f'Bearer {gh.good_key}'
-                    return self.send(200 if ok else 401, {'data': {}} if ok else {'error': {'message': 'User not found'}})
+                    return self.send(
+                        200 if ok else 401, {'data': {}} if ok else {'error': {'message': 'User not found'}}
+                    )
                 if self.headers.get('Authorization') != 'Bearer ghs_token':
                     return self.send(401, {'message': 'Bad credentials'})
-                p = u.path[len(prefix):]
+                p = u.path[len(prefix) :]
                 if m := re.fullmatch(r'/pulls/(\d+)', p):
                     return self.send(200, gh.pulls[int(m[1])])
                 if m := re.fullmatch(r'/compare/([0-9a-f]+)\.\.\.([0-9a-f]+)', p):
-                    mb = subprocess.run(['git', '-C', gh.git_dir, 'merge-base', m[1], m[2]],
-                                        capture_output=True, text=True, check=True).stdout.strip()
+                    mb = subprocess.run(
+                        ['git', '-C', gh.git_dir, 'merge-base', m[1], m[2]], capture_output=True, text=True, check=True
+                    ).stdout.strip()
                     return self.send(200, {'merge_base_commit': {'sha': mb}})
                 if m := re.fullmatch(r'/issues/(\d+)', p):
                     return self.send(200, gh.issues[int(m[1])])
                 if m := re.fullmatch(r'/issues/(\d+)/comments', p):
                     q = parse_qs(u.query)
                     per, page = int(q.get('per_page', ['30'])[0]), int(q.get('page', ['1'])[0])
-                    rows = gh.comments_on(int(m[1]))[(page - 1) * per:page * per]
+                    rows = gh.comments_on(int(m[1]))[(page - 1) * per : page * per]
                     return self.send(200, [{k: c[k] for k in ('id', 'body', 'user')} for c in rows])
                 self.send(404, {'message': 'Not Found'})
 
             def write(self, method):
-                p = urlparse(self.path).path[len(prefix):]
+                p = urlparse(self.path).path[len(prefix) :]
                 body = self.body()
                 with gh.lock:
                     gh.writes.append((method, p))

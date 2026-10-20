@@ -1,4 +1,5 @@
 """The few GitHub REST calls the action makes. Standard library only: runners may not have `gh`."""
+
 from __future__ import annotations
 
 import json
@@ -12,8 +13,9 @@ class GitHub:
         self.token = token
 
     def call(self, method, path, body=None):
-        req = urllib.request.Request(self.base + path, method=method,
-                                     data=json.dumps(body).encode() if body is not None else None)
+        req = urllib.request.Request(
+            self.base + path, method=method, data=json.dumps(body).encode() if body is not None else None
+        )
         req.add_header('Authorization', f'Bearer {self.token}')
         req.add_header('Accept', 'application/vnd.github+json')
         req.add_header('X-GitHub-Api-Version', '2022-11-28')
@@ -45,8 +47,11 @@ class GitHub:
             self.call('POST', f'/issues/{number}/comments', {'body': body})
 
     def react(self, comment_id, kind, content='eyes'):
-        self.call('POST', f'/{"pulls" if kind == "review" else "issues"}/comments/{comment_id}/reactions',
-                  {'content': content})
+        self.call(
+            'POST',
+            f'/{"pulls" if kind == "review" else "issues"}/comments/{comment_id}/reactions',
+            {'content': content},
+        )
 
     def reply(self, number, comment_id, kind, body):
         if kind == 'review':

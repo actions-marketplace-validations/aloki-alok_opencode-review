@@ -1,4 +1,5 @@
 """Turn the outcome of a review into the one PR comment."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -27,14 +28,13 @@ def render(o):
         if o.find == 'failed':
             lines.append(f'Review failed for {sha}: {o.reason or "the model gave no answer"}.')
         else:
-            lines.append(f'Review did not finish for {sha}. It runs again on the next push, '
-                         'or comment `/oc review`.')
+            lines.append(f'Review did not finish for {sha}. It runs again on the next push, or comment `/oc review`.')
         return '\n'.join(lines)
 
     checked = o.verify == 'done'
     by_index = {v.get('index'): v.get('verdict') for v in (o.verdicts or [])}
     kept = [f for i, f in enumerate(o.findings) if not checked or by_index.get(i) == 'real']
-    kept = kept[:o.max_findings]
+    kept = kept[: o.max_findings]
     notes = []
     if o.find == 'timeout':
         notes.append('Stopped at the time limit, so it may have missed things.')
@@ -43,18 +43,20 @@ def render(o):
 
     if kept:
         n = len(kept)
-        lines += [f"Changes needed: {n} thing{'s' if n > 1 else ''}.", '']
+        lines += [f'Changes needed: {n} thing{"s" if n > 1 else ""}.', '']
         for i, f in enumerate(kept, 1):
             where = ':'.join(str(x) for x in (f.get('file'), f.get('line')) if x) or '?'
             fix = _clip(f.get('fix'))
-            lines.append(f"{i}. {_clip(f.get('title')).rstrip('.')} (`{where}`).{' ' + fix if fix else ''}")
+            lines.append(f'{i}. {_clip(f.get("title")).rstrip(".")} (`{where}`).{" " + fix if fix else ""}')
     elif o.find == 'done':
         lines.append('Nothing blocking found.')
     else:
         lines.append('No findings before the time limit.')
         notes = [n for n in notes if 'time limit' not in n] + ['Comment `/oc review` to run it again.']
-    lines += ['', f"<sub>OpenCode review of {sha}, advisory.{''.join(' ' + n for n in notes)} "
-                  'Reply if a finding is wrong.</sub>']
+    lines += [
+        '',
+        f'<sub>OpenCode review of {sha}, advisory.{"".join(" " + n for n in notes)} Reply if a finding is wrong.</sub>',
+    ]
     return '\n'.join(lines)
 
 

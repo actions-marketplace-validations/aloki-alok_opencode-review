@@ -1,6 +1,9 @@
+from helpers import src  # noqa: F401  (puts src/ on the path)
+
+# isort: split
+
 import unittest
 
-from helpers import src  # noqa: F401
 from install import InstallError, package
 
 

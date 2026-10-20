@@ -1,4 +1,5 @@
 """Decide what one GitHub event asks for: a PR review, an answer to a question, or nothing."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -30,8 +31,7 @@ def route(event_name, event, pr, settings, runner_environment):
     """`pr` is the pull request the event is about (fetched for issue comments), or None.
     Every refusal is a skip with a reason, so the job log says why nothing ran."""
     repo = event.get('repository') or {}
-    if runner_environment == 'self-hosted' and not repo.get('private', True) \
-            and not settings.allow_public_self_hosted:
+    if runner_environment == 'self-hosted' and not repo.get('private', True) and not settings.allow_public_self_hosted:
         return Job('skip', 'public repo on a self-hosted runner (set allow-public-self-hosted to override)')
     if event_name == 'pull_request':
         return _pull_request(event, pr, repo)
@@ -42,7 +42,7 @@ def route(event_name, event, pr, settings, runner_environment):
 
 def _pull_request(event, pr, repo):
     if event.get('action') not in PR_ACTIONS:
-        return Job('skip', f"pull_request action {event.get('action')} is not reviewed")
+        return Job('skip', f'pull_request action {event.get("action")} is not reviewed')
     if pr.get('draft'):
         return Job('skip', 'draft PR')
     if pr['user']['login'] == 'dependabot[bot]':
@@ -63,7 +63,7 @@ def _comment(event, pr, repo, settings, kind):
     if c['user'].get('type') == 'Bot':
         return Job('skip', 'comment by a bot')
     if c.get('author_association') not in settings.associations:
-        return Job('skip', f"commenter is {c.get('author_association')}, not in {','.join(settings.associations)}")
+        return Job('skip', f'commenter is {c.get("author_association")}, not in {",".join(settings.associations)}')
     if pr is not None and not _same_repo(pr, repo):
         return Job('skip', 'PR from a fork')
     number = pr['number'] if pr is not None else event['issue']['number']

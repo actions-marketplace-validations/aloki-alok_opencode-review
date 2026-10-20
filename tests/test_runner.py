@@ -1,3 +1,7 @@
+from helpers import ROOT, src  # noqa: F401  (puts src/ on the path)
+
+# isort: split
+
 import json
 import os
 import tempfile
@@ -6,7 +10,6 @@ import time
 import unittest
 from pathlib import Path
 
-from helpers import ROOT, src  # noqa: F401
 from budget import Budget
 from runner import Pass, run_pass
 
@@ -40,10 +43,22 @@ class RunnerTest(unittest.TestCase):
         p.write_text(json.dumps(plan))
         os.environ['OPENCODE_FAKE_PLAN'] = str(p)
 
-    def run_it(self, budget=Budget(5, 2), key='findings', work=None):
-        return run_pass(Pass(opencode=FAKE, cwd=str(self.code), work=str(work or self.dir / 'work'),
-                             model='openrouter/some/model', api_key=KEY, agent='review', prompt='go',
-                             budget=budget, json_key=key, wrap_seconds=3))
+    def run_it(self, budget=None, key='findings', work=None):
+        budget = budget or Budget(5, 2)
+        return run_pass(
+            Pass(
+                opencode=FAKE,
+                cwd=str(self.code),
+                work=str(work or self.dir / 'work'),
+                model='openrouter/some/model',
+                api_key=KEY,
+                agent='review',
+                prompt='go',
+                budget=budget,
+                json_key=key,
+                wrap_seconds=3,
+            )
+        )
 
     def calls_made(self):
         return [json.loads(ln) for ln in self.calls.read_text().splitlines()]
@@ -56,8 +71,9 @@ class RunnerTest(unittest.TestCase):
         self.assertEqual(len(self.calls_made()), 1)
 
     def test_killed_mid_stream_is_resumed_for_the_json(self):
-        self.plan(run=[[0, STEP], [0, text('reading')], [30, text(FINDINGS)]],
-                  resume=[[0, text('Out of time. ' + FINDINGS)]])
+        self.plan(
+            run=[[0, STEP], [0, text('reading')], [30, text(FINDINGS)]], resume=[[0, text('Out of time. ' + FINDINGS)]]
+        )
         t = time.monotonic()
         r = self.run_it(Budget(5, 1))
         self.assertLess(time.monotonic() - t, 1 + 3 + 2)
@@ -83,15 +99,15 @@ class RunnerTest(unittest.TestCase):
 
     def test_finished_without_json_is_asked_for_it(self):
         # The step cap makes OpenCode stop with a text summary and no JSON.
-        self.plan(run=[[0, STEP], [0, text('I looked at a.py and found an issue.')]],
-                  resume=[[0, text(FINDINGS)]])
+        self.plan(run=[[0, STEP], [0, text('I looked at a.py and found an issue.')]], resume=[[0, text(FINDINGS)]])
         r = self.run_it()
         self.assertEqual(r.status, 'done')
         self.assertEqual(len(r.result['findings']), 1)
 
     def test_error_with_no_session_fails(self):
-        self.plan(run=[[0, {'type': 'error', 'error': {'name': 'APIError', 'data': {'message': 'User not found'}}}]],
-                  exit=1)
+        self.plan(
+            run=[[0, {'type': 'error', 'error': {'name': 'APIError', 'data': {'message': 'User not found'}}}]], exit=1
+        )
         r = self.run_it()
         self.assertEqual(r.status, 'failed')
         self.assertIsNone(r.result)

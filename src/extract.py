@@ -1,4 +1,5 @@
 """Read an `opencode run --format json` log: the model's text, its final JSON, the session and turn count."""
+
 from __future__ import annotations
 
 import json

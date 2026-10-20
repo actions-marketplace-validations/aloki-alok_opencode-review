@@ -1,9 +1,12 @@
+from helpers import src  # noqa: F401  (puts src/ on the path)
+
+# isort: split
+
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
-from helpers import src  # noqa: F401
 from diff import build
 
 
@@ -46,8 +49,19 @@ class DiffTest(unittest.TestCase):
 
     def test_lockfiles_and_translations_are_skipped(self):
         self.write('app/calc.py', 'def add(a, b):\n    x = 1\n    y = 2\n    z = 3\n    return a - b\n')
-        for name in ('package-lock.json', 'web/package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'poetry.lock',
-                     'uv.lock', 'Cargo.lock', 'go.sum', 'i18n/fr.po', 'i18n/app.pot', 'static/app.min.js'):
+        for name in (
+            'package-lock.json',
+            'web/package-lock.json',
+            'yarn.lock',
+            'pnpm-lock.yaml',
+            'poetry.lock',
+            'uv.lock',
+            'Cargo.lock',
+            'go.sum',
+            'i18n/fr.po',
+            'i18n/app.pot',
+            'static/app.min.js',
+        ):
             self.write(name, 'generated\n' * 50)
         patch, changed = build(self.repo, self.base, self.commit())
         self.assertNotIn('generated', patch)

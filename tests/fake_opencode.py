@@ -4,6 +4,7 @@
 or the same keyed by agent: {"review": {...}, "verify": {...}}. A call with --session uses "resume"
 of the agent that started the session. Each call's argv, env, cwd and top-level files go to
 OPENCODE_FAKE_CALLS."""
+
 import json
 import os
 import signal
@@ -30,9 +31,19 @@ if resume:
     agent = argv[argv.index('--session') + 1].removeprefix('ses_')
 step = plan.get(agent, plan)
 with open(os.environ['OPENCODE_FAKE_CALLS'], 'a') as f:
-    f.write(json.dumps({'argv': argv, 'env': dict(os.environ), 'cwd': os.getcwd(),
-                        'files': sorted(os.listdir('.')), 'tree': tree(),
-                        'gitconfig': open('.git/config').read() if os.path.exists('.git/config') else ''}) + '\n')
+    f.write(
+        json.dumps(
+            {
+                'argv': argv,
+                'env': dict(os.environ),
+                'cwd': os.getcwd(),
+                'files': sorted(os.listdir('.')),
+                'tree': tree(),
+                'gitconfig': open('.git/config').read() if os.path.exists('.git/config') else '',
+            }
+        )
+        + '\n'
+    )
 data = os.environ.get('XDG_DATA_HOME', '')
 if data:
     # Like OpenCode's own database: a second job sharing this dir would see the first one's runs.
