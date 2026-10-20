@@ -105,7 +105,6 @@ def env(p):
         XDG_DATA_HOME=str(home / 'data'),
         XDG_CACHE_HOME=str(home / 'cache'),
         XDG_STATE_HOME=str(home / 'state'),
-        OPENCODE_DISABLE_CLAUDE_CODE='1',
         OPENCODE_DISABLE_AUTOUPDATE='1',
         OPENCODE_CONFIG_CONTENT=json.dumps(config(p)),
     )

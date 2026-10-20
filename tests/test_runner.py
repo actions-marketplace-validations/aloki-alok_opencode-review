@@ -140,7 +140,10 @@ class RunnerTest(unittest.TestCase):
         for var in ('HOME', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME', 'XDG_STATE_HOME'):
             self.assertTrue(env[var].startswith(work), var)
         self.assertNotIn('GITHUB_TOKEN', env)
-        self.assertEqual(env['OPENCODE_DISABLE_CLAUDE_CODE'], '1')
+        # The flag also hides the repo's own CLAUDE.md (measured on 1.19.3). The fresh HOME already keeps
+        # out a global one.
+        self.assertNotIn('OPENCODE_DISABLE_CLAUDE_CODE', env)
+        self.assertEqual(os.listdir(env['HOME']), [])
         self.assertEqual(call['cwd'], str(self.code))
         self.assertNotIn(KEY, ' '.join(argv))
         self.assertNotIn(KEY, env['OPENCODE_CONFIG_CONTENT'])
