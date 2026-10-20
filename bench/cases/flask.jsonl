@@ -1,0 +1,1 @@
+{"repo": "https://github.com/pallets/flask", "id": "4996", "kind": "bug", "title": "deprecate markupsafe exports", "body": "", "head": "704b68948f7bb94a3a4fa15e99243d4ed82081c5", "base": "1ee22e1736ffd12c2222cd6215ed04ec1592adaa", "fix_ids": ["5085"], "fix_lines": {"src/flask/__init__.py": [[79, 79]]}}

@@ -31,6 +31,18 @@ python3 bench/compare.py before.json after.json
 
 `--only 123,456` limits the run to some cases. A stopped run resumes where it left off.
 
+## Public cases
+
+`cases/` holds 17 bug-introducing PRs from [httpx](https://github.com/encode/httpx),
+[click](https://github.com/pallets/click) and [flask](https://github.com/pallets/flask), one file
+per repo, mined with `mine.py` and picked by hand (renames, release bumps and docs reworks dropped).
+Clone the repo with full history and pass it as `--repo`:
+
+```sh
+git clone https://github.com/encode/httpx /tmp/httpx
+python3 bench/run.py bench/cases/httpx.jsonl --repo /tmp/httpx --out results/httpx --model ...
+```
+
 ## Reading the numbers
 
 - Lines move between the introducing PR and its fix, so a catch is approximate. Read the findings

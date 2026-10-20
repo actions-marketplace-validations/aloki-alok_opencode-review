@@ -2,7 +2,6 @@ from helpers import ROOT, src  # noqa: F401  (puts src/ on the path)
 
 # isort: split
 
-import json
 import subprocess
 import sys
 import tempfile
