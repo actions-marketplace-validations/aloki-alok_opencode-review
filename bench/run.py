@@ -95,7 +95,7 @@ def main():
     ap.add_argument('--guide-file')
     ap.add_argument('--guide-path')
     ap.add_argument('--budget', default='auto')
-    ap.add_argument('--turn-p90', type=float, default=14)
+    ap.add_argument('--turn-p90', type=float, default=18)
     ap.add_argument('--opencode', default='opencode')
     ap.add_argument('--only', default='')
     a = ap.parse_args()

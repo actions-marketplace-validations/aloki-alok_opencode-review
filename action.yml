@@ -32,7 +32,7 @@ inputs:
     default: '16:240'
   turn-p90:
     description: Seconds a model turn takes at p90. Sets how many turns fit the time budget.
-    default: '14'
+    default: '18'
   allowed-associations:
     description: Who may use comment commands, as GitHub author associations.
     default: OWNER,MEMBER,COLLABORATOR

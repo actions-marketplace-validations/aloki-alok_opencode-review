@@ -15,8 +15,8 @@ class BudgetTest(unittest.TestCase):
         self.assertEqual(find_budget(20, 14).seconds, 90)
         self.assertEqual(find_budget(21, 14).seconds, 180)
         self.assertEqual(find_budget(300, 14).seconds, 180)
-        self.assertEqual(find_budget(301, 14).seconds, 300)
-        self.assertEqual(find_budget(50_000, 14).seconds, 300)
+        self.assertEqual(find_budget(301, 14).seconds, 240)
+        self.assertEqual(find_budget(50_000, 14).seconds, 240)
 
     def test_turns_fit_the_time_at_p90(self):
         for lines in (0, 2, 100, 1000):

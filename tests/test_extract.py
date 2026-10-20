@@ -47,6 +47,11 @@ class ExtractTest(unittest.TestCase):
         log = whole + '\n' + text('{"findings": [{"file": "b.py"')[:30]
         self.assertEqual(find_json(log, 'findings'), {'findings': [FINDING]})
 
+    def test_escaped_json_is_read(self):
+        # Seen from DeepSeek in a wrap-up: the quotes came back backslash-escaped.
+        log = text('{\\"findings\\": [{\\"file\\": \\"a.py\\", \\"line\\": 3}]}')
+        self.assertEqual(find_json(log, 'findings'), {'findings': [{'file': 'a.py', 'line': 3}]})
+
     def test_two_json_blocks_last_wins(self):
         log = '\n'.join([text('{"findings": [%s]}' % json.dumps(FINDING)), text('{"findings": []}')])
         self.assertEqual(find_json(log, 'findings'), {'findings': []})

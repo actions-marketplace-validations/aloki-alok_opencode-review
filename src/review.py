@@ -28,8 +28,8 @@ class Model:
     opencode: str
     model: str  # provider/model
     api_key: str
-    turn_p90: float = 14
-    wrap_seconds: int = 30
+    turn_p90: float = 18
+    wrap_seconds: int = 60
 
 
 @dataclass

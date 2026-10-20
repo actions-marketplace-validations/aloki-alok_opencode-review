@@ -63,9 +63,9 @@ Only repo owners, members and collaborators can use commands. Bots and fork PRs 
 | `trigger` | `/oc` | Command word. Change the `if:` in the workflow too. |
 | `guide-path` | `.github/opencode-review/guide.md` | Repo guide added to every prompt, read from the base branch. |
 | `max-findings` | `5` | Most findings in the comment. |
-| `review-budget` | `auto` | `auto` sizes the review to the change: 90 s up to 20 changed code lines, 180 s up to 300, else 300 s. Or `turns:seconds`. |
+| `review-budget` | `auto` | `auto` sizes the review to the change: 90 s up to 20 changed code lines, 180 s up to 300, else 240 s. Or `turns:seconds`. |
 | `ask-budget` | `16:240` | `turns:seconds` for an answer. |
-| `turn-p90` | `14` | Seconds per model turn at p90. Turns are set so they fit the time. Raise it for a slower model. |
+| `turn-p90` | `18` | Seconds per model turn at p90. Turns are set so they fit the time. Raise it for a slower model. |
 | `allowed-associations` | `OWNER,MEMBER,COLLABORATOR` | Who may use commands. |
 | `allow-public-self-hosted` | `false` | See [SECURITY.md](SECURITY.md). |
 | `opencode-version` | `1.19.3` | OpenCode version to install. |

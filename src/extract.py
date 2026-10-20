@@ -27,15 +27,22 @@ def _texts(log):
 def find_json(log, key):
     """The last JSON object in the model's text whose `key` is a list, or None."""
     found = None
-    decoder = json.JSONDecoder()
     for t in _texts(log):
-        for m in re.finditer(r'\{', t):
-            try:
-                obj, _ = decoder.raw_decode(t, m.start())
-            except ValueError:
-                continue
-            if isinstance(obj, dict) and isinstance(obj.get(key), list):
-                found = obj
+        # A model sometimes prints the JSON with its quotes escaped: {\"findings\": []}.
+        found = _last_json(t, key) or _last_json(t.replace('\\"', '"'), key) or found
+    return found
+
+
+def _last_json(text, key):
+    found = None
+    decoder = json.JSONDecoder()
+    for m in re.finditer(r'\{', text):
+        try:
+            obj, _ = decoder.raw_decode(text, m.start())
+        except ValueError:
+            continue
+        if isinstance(obj, dict) and isinstance(obj.get(key), list):
+            found = obj
     return found
 
 

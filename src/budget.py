@@ -6,7 +6,7 @@ from typing import NamedTuple
 
 # (changed code lines up to, seconds). A one-line fix must not walk to the big-PR cap.
 TIERS = ((20, 90), (300, 180))
-LARGEST = 300
+LARGEST = 240  # with a 60 s wrap-up and the second check, the worst case fits a 10 minute job
 MIN_TURNS = 3
 
 

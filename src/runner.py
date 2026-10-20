@@ -49,7 +49,7 @@ class Pass:
     prompt: str
     budget: object
     json_key: str | None  # findings | verdicts, or None for a free-text answer
-    wrap_seconds: int = 30
+    wrap_seconds: int = 60
 
 
 @dataclass

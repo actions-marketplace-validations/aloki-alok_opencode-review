@@ -146,8 +146,8 @@ def _run_job(env, log, gh, job, event, pr, key, work):
         opencode if not failure else '',
         env['OC_MODEL'],
         key,
-        float(env.get('OC_TURN_P90') or 14),
-        int(env.get('OC_WRAP_SECONDS') or 30),
+        float(env.get('OC_TURN_P90') or 18),
+        int(env.get('OC_WRAP_SECONDS') or 60),
     )
     ctx = dict(env=env, log=log, gh=gh, job=job, code=code, work=work, model=model)
     if job.mode == 'review':
